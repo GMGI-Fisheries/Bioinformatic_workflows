@@ -1,0 +1,7 @@
+sample	cutadapt_total_processed	cutadapt_reverse_complemented	cutadapt_passing_filters	cutadapt_passing_filters_percent	DADA2_input	filtered	denoisedF	denoisedR	merged	nonchim
+OW_501_4Bottom	39,416	NA	39,038	99.0%	39038	36776	36641	36672	36164	36164
+OW_REV_C1Bottom	62,665	NA	62,142	99.2%	62142	62012	61939	61912	61532	61417
+OW_VW_C2Bottom	47,963	NA	47,565	99.2%	47565	47365	47146	47242	46405	46405
+Station18	63,240	NA	61,372	97.0%	61372	60166	59970	59908	58199	58199
+Station63	60,249	NA	57,305	95.1%	57305	56578	56397	55981	54531	54531
+Station69	77,045	NA	74,415	96.6%	74415	73447	73130	72703	70713	70713

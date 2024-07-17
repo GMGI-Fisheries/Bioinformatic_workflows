@@ -1,0 +1,318 @@
+---
+title: "Phyloseq Diversity Metrics: eDNA metabarcoding base script"
+output:
+  github_document: default
+  pdf_document:
+    keep_tex: yes
+  html_document:
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+This script analyzes your relative abundance matrix to assess alpha and beta diversity. Figures produced are potentially part of the main figures of your manuscript/report. 
+
+# Load libraries
+
+```{r}
+library(ggplot2) ## for plotting
+library(tidyverse) ## for data manipulation 
+library(phyloseq)
+library(knitr)
+library(readxl)
+library(writexl)
+library(cowplot)
+
+## for stats
+library(pairwiseAdonis)
+library(lme4) ## for stats
+library(car) ## for stats
+library(stats) ## for stats
+library(vegan)
+library("microbiome") ## for alpha diversity functions
+
+## set seed
+set.seed(1234)
+```
+
+# Load data 
+
+Before continuing with analyses, decide on what data you're going to use an input. Relative abundance, raw reads, rarefied counts (can be done in phyloseq), variance stabilizing transformation (vst) from DESeq2? The input will impact your interpretation and thus is important to decide **before** conducting any stats to avoid bias towards a particular result.
+
+On the Fisheries team, we have traditionally used relative abundance and the following code uses that dataset.
+
+### Relative Abundance data
+
+```{r}
+## Relative abundance matrix 
+df <- read_xlsx("example_output/Results_relab_matrix.xlsx") %>%
+  ## removing common_name and category for now 
+  dplyr::select(-Common_name, -Category) %>%
+  
+  ## making species_name rownames instead of column 
+  column_to_rownames(var = "Species_name")
+```
+
+### Metadata
+
+```{r}
+meta <- read.csv("example_input/metadata.csv", header = TRUE)
+
+## rownames are also needed in phyloseq meta table
+rownames(meta)<- meta[,1]
+```
+
+# Create phyloseq object
+
+```{r}
+## Create ASV (OTU) table and meta table 
+otu <- otu_table(df, taxa_are_rows = T)
+meta_phyloseq <- sample_data(meta)
+
+## Merge metadata and OTU table into one phyloseq "object"
+phylo_obj <- merge_phyloseq(otu, meta_phyloseq)
+
+## view phyloseq obj 
+## expected output = otu_table() with taxa and sample numbers and sample_data() with the sample and column numbers
+print(phylo_obj)
+```
+
+### Subsetting phyloseq object
+
+Optional if you'd like to break your data up by a certain variable (surface water, bottom water). If desired, uncomment the code chunk below.
+
+```{r}
+# surface <- subset_samples(phylo_obj, SampleType == "Surface Water")
+# bottom <- subset_samples(phylo_obj, SampleType == "Bottom Water") 
+```
+
+
+# Alpha Diversity 
+
+Comparing the species diversity (shannon index or species richness) at each site. 
+
+## Calculating Shannon Index and Species Richness
+
+The alpha function in the microbiome package calculates several alpha diversity indices. The most relevant are likely observed (species richness) and diversity_shannon (shannon index). 
+
+https://microbiome.github.io/tutorials/Alphadiversity.html
+
+```{r}
+alpha <- microbiome::alpha(phylo_obj) %>%
+  ## moving rownames to a column 
+  rownames_to_column(var = "SampleID") %>% 
+  
+  ## merge with metadata 
+  right_join(meta, ., by = "SampleID")
+```
+
+## Plotting
+
+```{r}
+shannon_plot <- boxplot_alpha(phylo_obj, index = "shannon", x_var = "SampleType", 
+              fill.colors = c(`Surface Water`="cyan4", `Bottom Water`="deeppink4")) +
+  
+  ## labels
+  labs(x="Sample Type", y="Shannon diversity", fill = "Sample Type") +
+  
+  ## theme options
+  theme_bw() + 
+  theme(
+    legend.position = "none",
+    axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 0), size=12, face="bold"),
+    axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 0, l = 0), size=12, face="bold")
+  ); shannon_plot
+
+richness_plot <- boxplot_alpha(phylo_obj, index = "observed", x_var = "SampleType", 
+              fill.colors = c(`Surface Water`="cyan4", `Bottom Water`="deeppink4")) +
+  
+  ## labels
+  labs(x="Sample Type", y="Species Richness", fill = "Sample Type") +
+  
+  ## theme options
+  theme_bw() + 
+  theme(
+    axis.title.y = element_text(margin = margin(t = 0, r = 15, b = 0, l = 0), size=12, face="bold"),
+    axis.title.x = element_text(margin = margin(t = 15, r = 0, b = 0, l = 0), size=12, face="bold") 
+  ); richness_plot
+```
+
+Cowplot together 
+
+```{r}
+plot_grid(shannon_plot, richness_plot, 
+          labels = c('A', 'B'), ncol = 2,
+          label_size = 15, 
+          #align = "hv", 
+          axis = "lrbt",
+          rel_widths = c(2.5,3.5),
+          rel_heights = c(1,1),
+          hjust = -0.75,
+          vjust = 1
+          )
+
+ggsave("example_output/Figures/alpha_diversity.png", width = 8, height = 4)
+```
+
+
+## Statistics
+
+Test: T-test or ANOVA 
+- Type I, II, and III:   
+- * indicates an interaction (SampleType*Month). Usually we are interested in the interaction of our factors.  
+- + indicates an additive effect (SampleType + Month)
+
+T-test to be used when only two groups to compare and ANOVA to be used with 3+ groups. Al
+
+non-parametric Kolmogorov-Smirnov test for two-group comparisons when there are no relevant covariates
+
+```{r}
+## Create model 
+aov <- aov(observed ~ SampleType, data = alpha)
+
+## ANOVA test on above model
+Anova(aov, type = "III")
+```
+
+Test: If 3+ groups, Tukey Post Hoc Comparisons 
+
+```{r}
+TukeyHSD(aov)
+```
+
+
+# Beta Diversity 
+
+Comparing the community assemblages between sites/groups.
+
+Resources (Read before continuing):  
+- https://ourcodingclub.github.io/tutorials/ordination/
+- https://uw.pressbooks.pub/appliedmultivariatestatistics/chapter/comparison-of-ordination-techniques/ 
+
+Common options:  
+- Principal Components Analysis (PCA): Euclidean distance measure   
+- Principal Coordinates Analysis (PCoA): Dissimilarity distance based   
+- Non-metric MultiDimensional Scaling (NMDS): Dissimilarity distance based  
+
+PCoA and NMDS handle zero's in community matrices much better than PCA. For metabarcoding data, usually PCoA and NMDS are more appropriate. The differences between PCoA and NMDS are minor compared to difference between PCA. NMDS is iterative and used a different ordering method (see resource links above for more info). 
+
+NMDS requires evaluation of the output 'stress value': This value tells you how well the model fit your data. This is helpful to include on your NMDS plot in reports/manuscripts/presentations. 
+
+Stress (0-1 scale)	Interpretation
+`< 0.05`	= Excellent representation with no prospect of misinterpretation
+`< 0.10`	= Good ordination with no real disk of drawing false inferences
+`< 0.20`	= Can be useful but has potential to mislead.  In particular, shouldn’t place too much reliance on the details
+`> 0.20`	= Could be dangerous to interpret
+`> 0.35`	= Samples placed essentially at random; little relation to original ranked distances
+
+If your stress value is >0.2, do not include in analyses and try PCoA instead.
+
+## Calculating dissimilarity matrix
+
+```{r}
+## Bray Curtis Dissimilarity Matrix (used in statistics)
+bray_df <- phyloseq::distance(phylo_obj, method = "bray")
+
+## Sample information
+sample_df <- data.frame(sample_data(phylo_obj))
+```
+
+## Plotting 
+
+### PCoA 
+
+https://www.rdocumentation.org/packages/phyloseq/versions/1.16.2/topics/ordinate 
+
+```{r}
+## Conduct PCoA 
+pcoa <- ordinate(physeq = phylo_obj, method = "PCoA", distance = "bray")
+
+## Plotting
+plot_ordination(phylo_obj, pcoa, 
+                
+                ## USER EDITS shape, color, alpha, fill, etc. as desired based on project metadata
+                color = "SampleType") +
+  
+  ## Point and point aesthetics
+  geom_point(aes(color = SampleType), alpha = .5, size = 5) +
+  scale_color_manual(values = c("green4", "gold3")) +
+
+  ## Labels: USER EDITS as desired
+  labs(color = "Sample Type") +
+  ggtitle("PCoA example") +
+  
+  ## Theme: USER EDITS as desired
+  theme_bw() +
+  theme(
+    legend.title = element_text(face = "bold", size=12),
+    legend.position = "right",
+    axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0), size=10, face="bold"),
+    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0), size=10, face="bold"),
+  ) 
+  
+## USER EDITS WIDTH AND HEIGHT TO DESIRED   
+ggsave("example_output/Figures/PCoA_phyloseq.png", width = 6, height = 5)
+```
+
+### NMDS
+
+```{r}
+## Calculating NMDS 
+NMDS <- ordinate(physeq = phylo_obj, method = "NMDS", distance = "bray")
+
+## Plotting
+plot_ordination(phylo_obj, NMDS, 
+                
+                ## USER EDITS shape, color, alpha, fill, etc. as desired based on project metadata
+                color = "SampleType") +
+  
+  ## Point and point aesthetics
+  geom_point(aes(color = SampleType), alpha = .5, size = 5) +
+  scale_color_manual(values = c("green4", "gold3")) +
+
+  ## Labels: USER EDITS as desired
+  labs(color = "Project") +
+  ggtitle("NMDS example") +
+  
+  ## adding stress value to plot (user edits x and y to desired location)
+  annotate(geom = "label", x = 0.32, y = 0.36, 
+           label = sprintf("Stress: %.6f", NMDS$stress), hjust = 0, vjust = 1, 
+           label.size = NA, fontface = "italic", color = "grey30", size = 2.75, fill="white") +
+  
+  ## Theme: USER EDITS as desired
+  theme_bw() +
+  theme(
+    legend.title = element_text(face = "bold", size=12),
+    legend.position = "right",
+    axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0), size=10, face="bold"),
+    axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0), size=10, face="bold"),
+  ) 
+
+## USER EDITS WIDTH AND HEIGHT TO DESIRED   
+ggsave("example_output/Figures/NMDS_phyloseq.png", width = 7, height = 5)
+```
+
+
+## Statistics 
+
+Test: PERMANOVA 
+- * indicates an interaction (SampleType*Month). Usually we are interested in the interaction of our factors.  
+- + indicates an additive effect (SampleType + Month)
+
+The output will tell you which factors significantly impact the community assemblage (matrix). 
+
+```{r}
+adonis2(bray_df ~ SampleType, data = sample_df, permutations = 99)
+```
+
+Additional test: Pairwise PERMANOVA 
+
+The output will tell you which specific variable within each factor is driving the significant effects. 
+
+```{r}
+pairwise.adonis2(bray_df ~ SampleType, data = sample_df)
+```
+
+

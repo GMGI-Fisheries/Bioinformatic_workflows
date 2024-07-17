@@ -1,0 +1,273 @@
+---
+title: "Metabarcoding data quality: eDNA metabarcoding base script"
+output:
+  github_document: default
+  pdf_document:
+    keep_tex: yes
+  html_document:
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+This script evaluates your sequence quality and taxonomic assignment quality. Figures produced in this script can go into supplemental data for a manuscript. 
+
+# Load libraries
+
+```{r}
+library(dplyr) # for data transformation
+library(tidyverse) # for data transformation
+library(ggplot2) # for plotting
+library(readxl) ## for reading in excel files
+library(viridis)
+library(hrbrthemes)
+library(ggrepel)
+library(cowplot)
+
+# removing scientific notation
+## remove line or comment out if not desired 
+options(scipen=999)
+```
+
+# Load data 
+
+```{r}
+### User edits:
+### 1. Replace the 3 paths below: edit example_input to your project specific path 
+### 2. Confirm your sampleIDs match between metadata, results df, and filtering stats output
+
+filtering_stats <- read_tsv("example_input/overall_summary.tsv", show_col_types = FALSE) %>% dplyr::rename(SampleID = sample)
+
+meta <- read.csv("example_input/metadata.csv", header=TRUE)
+
+results <- read_xlsx("example_output/Results_rawreads_long.xlsx") %>%
+  mutate(Category = factor(Category, levels = c("Human", "Livestock", "Other", "unassigned", "Bird",
+                                                "Elasmobranch", "Marine Mammal", "Sea Turtle", "Teleost Fish")))
+                                                       
+ASV_breakdown <- read_xlsx("example_output/ASV_breakdown.xlsx") %>%
+  mutate(Category = factor(Category, levels = c("Human", "Livestock", "Other", "unassigned", "Bird",
+                                                "Elasmobranch", "Marine Mammal", "Sea Turtle", "Teleost Fish")))
+```
+
+# Sequence data
+
+## Data Transformation 
+
+No user edits. 
+
+```{r}
+df <- full_join(filtering_stats, meta, by = "SampleID") %>%
+  # filtering out columns we don't need 
+  dplyr::select(-cutadapt_reverse_complemented) %>%
+  
+  # removing percentage icon from cutadapt_passing_filters_percent
+  mutate(cutadapt_passing_filters_percent = gsub("%", "", cutadapt_passing_filters_percent)) %>%
+  
+  # confirming that all columns of interest are numerical 
+  mutate_at(vars(2:10), as.numeric) %>%
+  
+  # data transformation so all columns of interest are together 
+  gather("measure", "value", 2:10)  
+```
+
+## Plotting 
+
+Suggested webpage to choose colors: https://coolors.co/
+
+```{r}
+### User edits:
+### 1. Change paths of output to desired folder (data/figures is suggested data structure)
+### 2. Change x axis and color, size based on metadata desired 
+### 3. Change custom colors and sizes if desired and number of colors and sizes based on metadata variable chosen 
+
+df %>% 
+  ## USER EDITS IN LINE BELOW 
+  ggplot(., aes(x=Project, y=value, color=Site, shape=SampleType)) + 
+  
+  ## adding points in jitter format 
+  geom_jitter(width=0.15, alpha=0.5) + 
+  
+  ## option for additional boxplots if desired (uncomment to add)
+  #geom_boxplot() +
+  
+  ## using facet_wrap to create grid based on variables and factor() to order them in custom format
+  facet_wrap(~factor(measure, levels=c('cutadapt_total_processed', 'cutadapt_passing_filters', 
+                                       'cutadapt_passing_filters_percent', 'DADA2_input',
+                                 'filtered', 'denoisedF', 'denoisedR', 'merged', 'nonchim')), scales = "free") +
+  
+  ## graph asthetics 
+  theme_bw() +
+  ylab("Number of reads") + 
+  
+  ## USER EDITS IN MANUAL CODE BELOW 
+  scale_color_manual(values = c("red3", "lightblue", "purple2", "gold", "green4", "black")) +
+  scale_size_manual(values = c(21,17)) +
+  
+  
+  theme(panel.background=element_rect(fill='white', colour='black'),
+        strip.background=element_rect(fill='white', colour='black'),
+        strip.text = element_text(size = 10, face="bold"),
+        legend.position = "right",
+        axis.text.y = element_text(size=7, color="grey30"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0), size=11, face="bold"),
+        axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0), size=11, face="bold"))
+
+ggsave("example_output/Figures/SampleReport_FilteringStats.png", width = 10, height=8)
+```
+
+
+# Plot unassigned taxonomy
+
+## Data transformation 
+
+No user edits.
+
+```{r}
+results_summary <- results %>% 
+  group_by(Category, Project) %>%
+  summarise(sum_reads = sum(reads))
+
+general_stats <- results %>% 
+  group_by(Category) %>%
+  summarise(sum_reads = sum(reads)) %>% ungroup() %>%
+  mutate(total = sum(sum_reads),
+         percent = sum_reads/total*100) %>% dplyr::select(Category, percent) %>% distinct() %>%
+  ## round to 2 decimal places 
+  mutate(across(c('percent'), round, 4))
+
+ASV_summary <- ASV_breakdown %>%
+  group_by(Category) %>%
+  summarise(count = n_distinct(ASV_ID))
+
+## species in addition to category
+## metadata option add-in
+```
+
+
+## Raw Reads Plotting 
+
+With metadata 
+
+```{r}
+### User edits:
+### 1. Change paths of output to desired folder (data/figures is suggested data structure)
+### 2. Change x axis and color, size based on metadata desired 
+### 3. Change custom colors and sizes if desired and number of colors and sizes based on metadata variable chosen 
+### 4. Comment out any categories that do not show up in your dataset
+
+# Check how many categories 
+unique(results_summary$Category)
+## Based on this output, comment/uncomment the categories present for color 
+
+ggplot(results_summary, aes(fill=Category, y=sum_reads, x=Project)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_manual(values = c("#9f040e", # Human
+                                 "#e30613", # Livestock
+                                 #"#fb747d", # Other
+                                 "#ff0000", # unassigned
+                                 "#03045e", # Bird
+                                 #"#023e8a", # Elasmobranch
+                                 "#0077b6", # Marine mammal
+                                 #"#0096c7", # Sea Turtle
+                                 "#48cae4" # Teleost Fish 
+                                 )) +
+    labs(fill = "Category") +
+    theme_bw() + 
+    xlab(" Month") + ylab("Raw reads") +
+    theme(panel.background=element_rect(fill='white', colour='black'),
+        axis.text.y = element_text(size=7, color="grey30"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0), size=11, face="bold"),
+        axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0), size=11, face="bold"))
+
+## add % stacked as well
+
+ggsave("example_output/Figures/Rawreads_percategory.png", width = 8, height = 5)
+```
+
+
+Piechart 
+
+```{r}
+### User edits:
+### 1. Change paths of output to desired folder (data/figures is suggested data structure)
+### 2. Change scale brewer color if desired 
+
+piechart <- general_stats %>%  
+  mutate(csum = rev(cumsum(rev(percent))), 
+         pos = percent/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), percent/2, pos))
+
+piechart_reads <- general_stats %>% 
+  ggplot(., aes(x="", y = percent, fill = Category)) +
+  geom_col(color = "black") +
+  geom_label_repel(data = piechart,
+                   aes(y = pos, label = paste0(percent, "%")),
+                   size = 3, nudge_x = 1, show.legend = FALSE) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "RdYlBu") +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "white", colour = NA)
+  ) +
+  ggtitle("% of raw reads") +
+  xlab("") + ylab("") + labs(fill = "Category")
+```
+
+
+ASV Piechart 
+
+```{r}
+### User edits:
+### 1. Change paths of output to desired folder (data/figures is suggested data structure)
+### 2. Change scale brewer color if desired 
+
+piechart_ASV <- ASV_summary %>%  
+  mutate(csum = rev(cumsum(rev(count))), 
+         pos = count/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), count/2, pos))
+
+piechart_ASV <- ASV_summary %>% 
+  ggplot(., aes(x="", y = count, fill = Category)) +
+  geom_col(color = "black") +
+  geom_label_repel(data = piechart_ASV,
+                   aes(y = pos, label = paste0(count)),
+                   size = 3, nudge_x = 1, show.legend = FALSE) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "RdYlBu") +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "white", colour = NA)
+  ) +
+  ggtitle("# of ASVs") +
+  xlab("") + ylab("") + labs(fill = "Category")
+```
+
+
+Plot together and export 
+
+```{r}
+plot_grid(piechart_reads, piechart_ASV)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
