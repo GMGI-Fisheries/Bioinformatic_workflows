@@ -57,9 +57,9 @@ Each user needs to write in their specific directory outputs prior to the file n
 ### 1. change paths of input and output as desired 
 
 ## GMGI Fish database
-path_GMGIdb = "../Reference Databases/GMGI_Vert_Ref.xlsx"
-path_fishbase_tax = "../Reference Databases/taxonomic_classification_fishbase.csv"
-path_mitofish_tax = "../Reference Databases/taxonomic_classification_mitofish.csv"
+path_GMGIdb = "../../../Reference Databases/GMGI_Vert_Ref.xlsx"
+path_fishbase_tax = "../../../Reference Databases/taxonomic_classification_fishbase.csv"
+path_mitofish_tax = "../../../Reference Databases/taxonomic_classification_mitofish.csv"
 
 ## BLAST results
 path_blast_gmgi = "example_input/BLASTResults_GMGI.txt"
@@ -94,9 +94,6 @@ Metadata specific to each project. This contains information about each sample (
 # meta <- read_excel("example_input/metadata.xlsx")
 ## CSV 
 meta <- read.csv("example_input/metadata.csv", header = TRUE)
-
-## add code to manipulate sample ID if needed
-## change samplesheet back to metadata.csv
 ```
 
 ## Load database metadata
@@ -227,11 +224,11 @@ multiple_hit_choice <- Blast_GMGI %>% group_by(ASV_ID) %>%
 multiple_hit_choice %>% write_xlsx(path_choice_required)
 ```
 
-Based on the output above, user needs to make some choices.
+Based on the output above, user needs to make some choices. In the excel spreadsheet, user needs to mark 'x' on the choices desired while leaving the other entries blank. 
 
 #### Choosing one of several hits. 
 
-Load choice edited dataset. 
+Load choice edited dataset. No user edits. 
 
 ```{r}
 multiple_hit_choice_edited <- read_xlsx("example_output/Taxonomic_assignments/Choice_required_GMGI_multiplehits_edited.xlsx") %>%
@@ -241,44 +238,21 @@ multiple_hit_choice_edited <- read_xlsx("example_output/Taxonomic_assignments/Ch
   dplyr::select(ASV_ID, sseqid, Choice)
 ```
 
-For every row of df, do filter(case_when(
-ASV_ID = row 1 column 1 ~ row 1 column 2
-))
-
+A for loop will filter Blast_GMGI df based on these choices. No user edits. 
 
 ```{r}
-### User edits:
-### 1. Add filtering cases using the format ASV_ID == "" ~ sseqid == ""
-### example: ASV_ID == "1535a44c66f8850e6d30284f8ddeb38d" ~ sseqid == "3.00_Human_mito1"
-### Keep the TRUE ~ TRUE at the end
+# Create a new edited df
+Blast_GMGI_edited <- Blast_GMGI 
 
-Blast_GMGI_edited <- Blast_GMGI %>% 
-  mutate(Choice = "x") %>%
-  
-  ## join multiple choice hit df 
-  left_join(., multiple_hit_choice_edited, by = c("ASV_ID", "sseqid", "Choice"))
-  
-  
-  ### picking one of several hits
-  filter(case_when(
-    ASV_ID == multiple_hit_choice_edited$ASV_ID[1] ~ multiple_hit_choice_edited$sseqid[1],
-    TRUE ~ TRUE))
-  
-  
 # Loop through each row of the dataframe
-for (i in 1:nrow(multiple_hit_choice_edited)) {
-  # Extract the current row
-  current_row <- multiple_hit_choice_edited[i, ]
+for (i in multiple_hit_choice_edited$ASV_ID) {
+  # Extract the current row (will do this for each ASV_ID in the choice df)
+  current_row <- multiple_hit_choice_edited %>% subset(ASV_ID==i)
   
   # Apply filter based on the current row's condition
-  Blast_GMGI_edited <- Blast_GMGI %>%
-    filter(case_when(
-      ASV_ID == current_row$ASV_ID ~ current_row$sseqid,
-      TRUE ~ TRUE
-    ))
-  
-  # Store the filtered dataframe in the list
-  filtered_dfs[[i]] <- filtered_df
+  Blast_GMGI_edited <- Blast_GMGI_edited %>%
+    filter(case_when(ASV_ID == current_row$ASV_ID ~ sseqid == current_row$sseqid,
+           TRUE ~ TRUE))
 }
 ```
 
