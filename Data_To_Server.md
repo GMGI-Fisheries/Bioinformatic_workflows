@@ -11,8 +11,5 @@ https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-over
 3. Change the file permissions to make the downloaded binary executable: `chmod u+x $HOME/bin/bs`  
 4. Authenticate your account: `bs auth`  
 5. Navigate to the webpage provided and authenticate use of BaseSpace CLI.  
-6. Find the Project ID of desired download:
-
-![]()
-
-7. Download dataset: `bs download project -i <project_id> --extension=fastq.gz -o /local/output/path`  
+6. Find the Project ID of desired download: Within Sequence Hub, navigate to Projects. Select the desired project. The Project ID is in the webpage handle (e.g., https://basespace.illumina.com/projects/411088072/about). 
+7. Download dataset: `bs download project -i <project_id> --extension=fastq.gz -o /local/output/path`. 
