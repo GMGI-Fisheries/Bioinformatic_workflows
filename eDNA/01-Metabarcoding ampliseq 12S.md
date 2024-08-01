@@ -1,6 +1,4 @@
-# Base scripts for metabarcoding 
-
-Scripts are located on NU's Discovery Cluster in `/work/gmgi/Fisheries/base_scripts/metabarcoding`. 
+# Metabarcoding workflow for 12S amplicon sequencing 
 
 *page details in progress.* 
 
@@ -12,25 +10,17 @@ Scripts to run:
 4. 01b-ampliseq.sh
 5. 02-taxonomicID.sh  
 
-## Copy script folder to project folder 
-
-This will copy all scripts in the `base_scripts/metabarcoding` folder into your specific project folder. Replace `project_path` with the path to specific project folder. 
-
-`cp /work/gmgi/Fisheries/base_scripts/metabarcoding/* project_path`
-
-## Contents 
-
 ### Step 1: Assess quality of raw data  
 
 `00-fastqc.sh`: 
 
 ```
 #!/bin/bash
-#SBATCH --error=output_messages/fastqc_output/"%x_error.%j" #if your job fails, the error report will be put in this file
-#SBATCH --output=output_messages/fastqc_output/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
+#SBATCH --error=script_output/fastqc_output/"%x_error.%j" #if your job fails, the error report will be put in this file
+#SBATCH --output=script_output/fastqc_output/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
 #SBATCH --partition=short
 #SBATCH --nodes=1
-#SBATCH --time=10:00:00
+#SBATCH --time=20:00:00
 #SBATCH --job-name=fastqc
 #SBATCH --mem=3GB
 #SBATCH --ntasks=24
@@ -262,8 +252,6 @@ ncbi_program="/work/gmgi/packages/ncbi-blast-2.16.0+"
 ASV_fasta=""
 out=""
 
-ASV_fasta="/work/gmgi/Fisheries/eDNA/offshore_wind2023/results/asv_length_filter"
-out="/work/gmgi/Fisheries/eDNA/offshore_wind2023/BLASToutput/test_remote"
 gmgi="/work/gmgi/databases/12S/GMGI"
 mito="/work/gmgi/databases/12S/Mitofish"
 taxonkit="/work/gmgi/databases/taxonkit"
@@ -299,7 +287,7 @@ ${ncbi_program}/bin/blastn -db ${gmgi}/*.fasta \
 awk -F $'\t' '{ print $4}' ${out}/BLASTResults_NCBI.txt | sort -u > ${out}/NCBI_sp.txt
 
 ## annotating taxid with full taxonomic classification
-cat ${out}/NCBI_sp.txt | ${taxonkit}/taxonkit reformat -I 1 -r "Unassigned" > NCBI_taxassigned.txt
+cat ${out}/NCBI_sp.txt | ${taxonkit}/taxonkit reformat -I 1 -r "Unassigned" > ${out}/NCBI_taxassigned.txt
 ```
 
 To run:  

@@ -12,4 +12,5 @@ https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-over
 4. Authenticate your account: `bs auth`  
 5. Navigate to the webpage provided and authenticate use of BaseSpace CLI.  
 6. Find the Project ID of desired download: Within Sequence Hub, navigate to Projects. Select the desired project. The Project ID is in the webpage handle (e.g., https://basespace.illumina.com/projects/411088072/about). 
-7. Download dataset: `bs download project -i <project_id> --extension=fastq.gz -o /local/output/path`. 
+7. Navigate to `$HOME/bin` and download dataset: `bs download project -i <project_id> --extension=fastq.gz -o /local/output/path`.   
+8. Navigate to the output path and move all files out of subdirectories: `mv */* .` 
