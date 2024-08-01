@@ -99,12 +99,12 @@ Notes:
 
 *This is an R script, not slurm script. Open RStudio interactive on Discovery Cluster to run this script.*
 
-Prior to running R script, use `ls * > ../metadata/sample_list.txt` from within the raw data folder to create a list of files.
+Prior to running R script, use the `rawdata` file created for the fastqc slurm array from within the raw data folder to create a list of files. Below is an example from our Offshore Wind project but the specifics of the sampleID will be project dependent. This project had four sequencing runs with different file names. 
 
 `01a-metadata.R`
 
 ```
-## Creating sample sheet for ampliseq
+## Creating sample sheet for offshore wind eDNA project 
 
 ### Step 1: In terminal 
 
@@ -118,49 +118,43 @@ library(stringr)
 library(strex)
 #library(filesstrings)
 
-### USER TO-DO ### 
-## 1. Complete Step 1 above to create file name list 
-## 2. Set paths for your project 
-## 3. Add other sampleID manipulation as needed 
-## 4. Edit metadata path in export.csv command
-
-### Set paths (USER EDITS)
-sample_list_path=""
-raw_data_path=""
-
 ### Read in sample sheet 
-sample_list <- read.delim2(sample_list_path, header=F) %>% 
-  dplyr::rename(forwardReads = V1) %>% 
-  filter(!forwardReads == "sample_list.txt") %>%
-  filter(!forwardReads == "rawdata")
 
-### creating sample ID 
-sample_list$sampleID <- gsub("-", "_", sample_list$forwardReads)
+sample_list <- read.delim2("/work/gmgi/Fisheries/eDNA/offshore_wind2023/raw_data/rawdata", header=F) %>% 
+  dplyr::rename(forwardReads = V1) %>%
+  mutate(sampleID = str_after_nth(forwardReads, "data/", 1),
+         sampleID = str_before_nth(sampleID, "_R", 1),
+         sampleID = gsub("Degen", "", sampleID),
+         sampleID = gsub("_L001", "", sampleID),
+         sampleID = gsub("Bottom", "_B", sampleID),
+         sampleID = gsub("Surface", "_S", sampleID),
+         sampleID = gsub("NA", "_NA", sampleID),
+         sampleID = gsub("2B", "2B_NA", sampleID),
+         sampleID = gsub("2A", "2A_NA", sampleID),
+         sampleID = gsub("1A", "1A_NA", sampleID),
+         sampleID = gsub("1B", "1B_NA", sampleID),
+         sampleID = gsub("Blank_1", "BK1", sampleID),
+         sampleID = gsub("Blank_2", "BK2", sampleID),
+         sampleID = ifelse(!grepl('July', sampleID), sub("_.*", "", sampleID), sampleID)
+         )
 
-### Adding other sampleID manipulation (USER EDITS)
-### examples below 
-# sample_list$sampleID <- str_before_nth(sample_list$forwardReads, "-12S", 1)
-# sample_list <- sample_list %>%
-#  mutate(sampleID = ifelse(grepl('H2O', forwardReads), "H2O-negative", sampleID))
+# creating sample ID 
+sample_list$sampleID <- gsub("-", "_", sample_list$sampleID)
 
-### keeping only rows with R1
+# keeping only rows with R1
 sample_list <- filter(sample_list, grepl("R1", forwardReads, ignore.case = TRUE))
 
-### duplicating column 
+# duplicating column 
 sample_list$reverseReads <- sample_list$forwardReads
 
-### replacing R1 with R2 in only one column 
+# replacing R1 with R2 in only one column 
 sample_list$reverseReads <- gsub("R1", "R2", sample_list$reverseReads)
 
 # rearranging columns 
 sample_list <- sample_list[,c(2,1,3)]
 
-# adding file path
-sample_list$forwardReads <- paste(raw_data_path, sample_list$forwardReads, sep = "")
-sample_list$reverseReads <- paste(raw_data_path, sample_list$reverseReads, sep = "")
-
-## exporting as csv (USER EDITS PATH PRIOR TO METADATA)
-sample_list %>% write.csv("/metadata/samplesheet.csv", row.names=FALSE, quote = FALSE)
+sample_list %>% write.csv("/work/gmgi/Fisheries/eDNA/offshore_wind2023/metadata/samplesheet.csv", 
+                          row.names=FALSE, quote = FALSE)
 ```
 
 ## Step 4: Run nf-core/ampliseq (Cutadapt & DADA2)
