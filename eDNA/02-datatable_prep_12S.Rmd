@@ -216,7 +216,10 @@ multiple_hit_choice <- Blast_GMGI %>% group_by(ASV_ID) %>%
   left_join(., ASV_rank_list, by = "ASV_ID") %>%
   
   ## moving database percent ID to be next to Blast percent ID
-  relocate(c(db_percent_ID, ASV_sum, ASV_rank), .after = pident); multiple_hit_choice
+  relocate(c(db_percent_ID, ASV_sum, ASV_rank), .after = pident) %>%
+  
+  ## adding choice column for next steps 
+  mutate(Choice = NA)
 
 ## export this data frame as excel sheet 
 multiple_hit_choice %>% write_xlsx(path_choice_required)
@@ -304,11 +307,13 @@ Disagree <- Blast_GMGI_edited %>% group_by(ASV_ID) %>%
   left_join(., ASV_rank_list, by = "ASV_ID") %>%
 
   ## filtering out duplicate rows
-  distinct() #%>%
+  distinct() %>%
   
   ## filtering to those entries that mismatch between GMGI, Mitofish, and NCBI
-  # filter(!(GMGI_100 == GMGI_lessthan100 | GMGI_100 == Mitofish | GMGI_100 == NCBI | 
-  #            GMGI_lessthan100 == Mitofish | Mitofish == NCBI))
+  filter((GMGI_100 != GMGI_lessthan100 | GMGI_100 != Mitofish | GMGI_100 != NCBI | is.na(GMGI_100))) %>%
+  
+  ## adding choice column for next steps 
+  mutate(Choice = NA)
 
 ## export this data frame as excel sheet 
 Disagree %>% write_xlsx(path_disagree_list)
