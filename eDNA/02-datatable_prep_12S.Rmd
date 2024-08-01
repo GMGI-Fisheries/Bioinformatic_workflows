@@ -57,9 +57,9 @@ Each user needs to write in their specific directory outputs prior to the file n
 ### 1. change paths of input and output as desired 
 
 ## GMGI Fish database
-path_GMGIdb = "../../../Reference Databases/GMGI_Vert_Ref.xlsx"
-path_fishbase_tax = "../../../Reference Databases/taxonomic_classification_fishbase.csv"
-path_mitofish_tax = "../../../Reference Databases/taxonomic_classification_mitofish.csv"
+path_GMGIdb = "../../../Projects/eDNA/Metabarcoding Lab Resources/Reference Databases/GMGI_Vert_Ref.xlsx"
+path_fishbase_tax = "../../../Projects/eDNA/Metabarcoding Lab Resources/Reference Databases/taxonomic_classification_fishbase.csv"
+path_mitofish_tax = "../../../Projects/eDNA/Metabarcoding Lab Resources/Reference Databases/taxonomic_classification_mitofish.csv"
 
 ## BLAST results
 path_blast_gmgi = "example_input/BLASTResults_GMGI.txt"
@@ -99,8 +99,6 @@ meta <- read.csv("example_input/metadata.csv", header = TRUE)
 ## Load database metadata
 
 No user edits in this section because paths have already been set above.
-
-Warning note from phylo class
 
 ```{r}
 # Load GMGI database information (common name, species name, etc.)
@@ -306,10 +304,11 @@ Disagree <- Blast_GMGI_edited %>% group_by(ASV_ID) %>%
   left_join(., ASV_rank_list, by = "ASV_ID") %>%
 
   ## filtering out duplicate rows
-  distinct() %>%
+  distinct() #%>%
   
   ## filtering to those entries that mismatch between GMGI, Mitofish, and NCBI
-  filter(!(GMGI_100 %in% GMGI_lessthan100 | GMGI_100 %in% Mitofish | GMGI_100 %in% NCBI))
+  # filter(!(GMGI_100 == GMGI_lessthan100 | GMGI_100 == Mitofish | GMGI_100 == NCBI | 
+  #            GMGI_lessthan100 == Mitofish | Mitofish == NCBI))
 
 ## export this data frame as excel sheet 
 Disagree %>% write_xlsx(path_disagree_list)

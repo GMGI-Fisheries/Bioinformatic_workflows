@@ -227,6 +227,15 @@ To run:
 
 ### Step 5: Blast ASV sequences (output from DADA2) against our 3 databases 
 
+Download ncbi-blast+ to `/work/gmgi/packages` using `wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz` and then `tar -zxvf ncbi-blast-2.16.0+-x64-linux.tar.gz`. NCBI latest: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/. Once downloaded, user does not need to repeat this.
+
+Check Mitofish webpage (https://mitofish.aori.u-tokyo.ac.jp/download/) for the most recent database version number. Compare to the `work/gmgi/databases/12S/reference_fasta/12S/Mitofish/` folder. If needed, update Mitofish database:
+1. `wget https://mitofish.aori.u-tokyo.ac.jp/species/detail/download/?filename=download%2F/complete_partial_mitogenomes.zip`  
+2. `unzip [file name]`  
+3. Rename the db using `mv mito-all Mitofish_vX.fasta` (replace X with version number)   
+4. Load ncbi-blast+ module: `module load ncbi-blast+/2.13.0`  
+5. Create ncbi db with `makeblastdb -in Mitofish_vX.fasta -dbtype nucl -out Mitofish_vX -parse_seqids` (replace X with version number)  
+
 `02-taxonomicID.sh`: 
 
 ```
@@ -245,32 +254,39 @@ To run:
 ## 1. Set paths for project; change db path if not 12S
 
 ## LOAD MODULES 
-module load ncbi-blast+/2.13.0
+## can use module on NU cluster or own ncbi-blast+
+# module load ncbi-blast+/2.13.0
+ncbi_program="/work/gmgi/packages/ncbi-blast-2.16.0+"
 
 # SET PATHS 
 ASV_fasta=""
 out=""
-db="/work/gmgi/databases/12S/reference_fasta"
+
+ASV_fasta="/work/gmgi/Fisheries/eDNA/offshore_wind2023/results/asv_length_filter"
+out="/work/gmgi/Fisheries/eDNA/offshore_wind2023/BLASToutput/test_remote"
+gmgi="/work/gmgi/databases/12S/GMGI"
+mito="/work/gmgi/databases/12S/Mitofish"
 taxonkit="/work/gmgi/databases/taxonkit"
 
 #### DATABASE QUERY ####
 ### NCBI database 
-blastn -remote -db nt \
+${ncbi_program}/bin/blastn -remote -db nt \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_NCBI.txt \
    -max_target_seqs 10 -perc_identity 100 -qcov_hsp_perc 95 \
-   -outfmt '6  qseqid   sseqid   sscinames   staxid pident   length   mismatch gapopen  qstart   qend  sstart   send  evalue   bitscore'
+   -outfmt '6  qseqid   sseqid   sscinames   staxid pident   length   mismatch gapopen  qstart   qend  sstart   send  evalue   bitscore' \
+   -verbose
 
 ## Mitofish database 
 
-blastn -db ${db}/Mitofish.fasta \
+${ncbi_program}/bin/blastn -db ${mito}/*.fasta \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_Mito.txt \
    -max_target_seqs 10 -perc_identity 100 -qcov_hsp_perc 95 \
    -outfmt '6  qseqid   sseqid  pident   length   mismatch gapopen  qstart   qend  sstart   send  evalue   bitscore'
 
 ## GMGI database 
-blastn -db ${db}/GMGIVertRef.fasta \
+${ncbi_program}/bin/blastn -db ${gmgi}/*.fasta \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_GMGI.txt \
    -max_target_seqs 10 -perc_identity 98 -qcov_hsp_perc 95 \
