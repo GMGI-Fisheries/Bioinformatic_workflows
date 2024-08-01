@@ -10,7 +10,7 @@ Scripts to run:
 4. 01b-ampliseq.sh
 5. 02-taxonomicID.sh  
 
-### Step 1: Assess quality of raw data  
+## Step 1: Assess quality of raw data  
 
 `00-fastqc.sh`: 
 
@@ -59,7 +59,7 @@ Notes:
 - Within the `out_dir` output folder, use `ls *html | wc` to count the number of html output files (1st/2nd column values). This should be equal to the --array range used and the number of raw data files. If not, the script missed some input files so address this before moving on.  
 
 
-### Step 2: Visualize quality of raw data  
+## Step 2: Visualize quality of raw data  
 
 `00-multiqc.sh` 
 
@@ -95,7 +95,7 @@ To run:
 Notes:  
 - Depending on the number of files per project, multiqc can be quick to run without a slurm script. To do this, run each line separately in the command line after activating the conda environment.  
 
-### Step 3: Create metadata sheet for ampliseq 
+## Step 3: Create metadata sheet for ampliseq 
 
 *This is an R script, not slurm script. Open RStudio interactive on Discovery Cluster to run this script.*
 
@@ -163,7 +163,7 @@ sample_list$reverseReads <- paste(raw_data_path, sample_list$reverseReads, sep =
 sample_list %>% write.csv("/metadata/samplesheet.csv", row.names=FALSE, quote = FALSE)
 ```
 
-### Step 4: Run nf-core/ampliseq (Cutadapt & DADA2)
+## Step 4: Run nf-core/ampliseq (Cutadapt & DADA2)
 
 `01b-ampliseq.sh`:
 
@@ -215,7 +215,7 @@ To run:
 - `sbatch 01b-ampliseq.sh` 
 
 
-### Step 5: Blast ASV sequences (output from DADA2) against our 3 databases 
+## Step 5: Blast ASV sequences (output from DADA2) against our 3 databases 
 
 Download ncbi-blast+ to `/work/gmgi/packages` using `wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz` and then `tar -zxvf ncbi-blast-2.16.0+-x64-linux.tar.gz`. NCBI latest: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/. Once downloaded, user does not need to repeat this.
 
