@@ -10,7 +10,7 @@ Scripts to run:
 4. 01b-ampliseq.sh
 5. 02-taxonomicID.sh  
 
-## Conda environment: Fisheries eDNA 
+## Step 1: Conda environment: Fisheries eDNA 
 
 GMGI Fisheries has a conda environment set-up with all the packages needed for this workflow. Code below was used to create this conda environment. **DO NOT REPEAT** every time user is running this workflow.
 
@@ -49,7 +49,7 @@ conda update [package name]
 ``` 
  
 
-## Assess quality of raw data  
+## Step 2: Assess quality of raw data  
 
 `00-fastqc.sh`: 
 
@@ -102,7 +102,7 @@ Notes:
 - Within the `out_dir` output folder, use `ls *html | wc` to count the number of html output files (1st/2nd column values). This should be equal to the --array range used and the number of raw data files. If not, the script missed some input files so address this before moving on.  
 
 
-## Visualize quality of raw data  
+## Step 3: Visualize quality of raw data  
 
 `00-multiqc.sh` 
 
@@ -141,7 +141,7 @@ To run:
 Notes:  
 - Depending on the number of files per project, multiqc can be quick to run without a slurm script. To do this, run each line separately in the command line after activating the conda environment.  
 
-## nf-core/ampliseq 
+## Step 4: nf-core/ampliseq 
 
 #### 12S primer sequences (required)
 
@@ -282,7 +282,7 @@ nextflow run nf-core/ampliseq -resume \
 To run:   
 - `sbatch 01b-ampliseq.sh` 
 
-## Blast ASV sequences (output from DADA2) against our 3 databases 
+## Step 5: Blast ASV sequences (output from DADA2) against our 3 databases 
 
 ### Populating /work/gmgi/databases folder 
 
