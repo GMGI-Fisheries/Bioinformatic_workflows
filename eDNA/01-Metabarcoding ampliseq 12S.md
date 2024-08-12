@@ -147,12 +147,12 @@ Notes:
 
 Below is what we used for 12S amplicon sequencing. Ampliseq will automatically calculate the reverse compliment and include this for us.
 
-Riaz 12S amplicon F Original: ACTGGGATTAGATACCCC
-Riaz 12S amplicon F Degenerate: ACTGGGATTAGATACCCY   
-Riaz 12S amplicon R: TAGAACAGGCTCCTCTAG   
+Riaz 12S amplicon F Original: ACTGGGATTAGATACCCC  
+Riaz 12S amplicon F Degenerate: ACTGGGATTAGATACCCY     
+Riaz 12S amplicon R: TAGAACAGGCTCCTCTAG     
 
-MiFish 12S amplicon F: GTCGGTAAAACTCGTGCCAGC
-MiFish 12S amplicon R: GTTTGACCCTAATCTATGGGGTGATAC
+MiFish 12S amplicon F: GTCGGTAAAACTCGTGCCAGC  
+MiFish 12S amplicon R: GTTTGACCCTAATCTATGGGGTGATAC  
 
 #### Metadata sheet (optional) 
 
