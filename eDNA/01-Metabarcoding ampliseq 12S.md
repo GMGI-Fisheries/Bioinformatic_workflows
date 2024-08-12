@@ -145,10 +145,14 @@ Notes:
 
 #### 12S primer sequences (required)
 
-Below is what we used for vertebrate testing between Riaz and Degenerate. Ampliseq will automatically calculate the reverse compliment and include this for us.
+Below is what we used for 12S amplicon sequencing. Ampliseq will automatically calculate the reverse compliment and include this for us.
 
-MiFish 12S amplicon F: ACTGGGATTAGATACCCY   
-MiFish 12S amplicon R: TAGAACAGGCTCCTCTAG   
+Riaz 12S amplicon F Original: ACTGGGATTAGATACCCC
+Riaz 12S amplicon F Degenerate: ACTGGGATTAGATACCCY   
+Riaz 12S amplicon R: TAGAACAGGCTCCTCTAG   
+
+MiFish 12S amplicon F: GTCGGTAAAACTCGTGCCAGC
+MiFish 12S amplicon R: GTTTGACCCTAATCTATGGGGTGATAC
 
 #### Metadata sheet (optional) 
 
