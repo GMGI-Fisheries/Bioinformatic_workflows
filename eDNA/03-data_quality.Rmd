@@ -142,6 +142,10 @@ ASV_summary <- ASV_breakdown %>%
   group_by(Category) %>%
   summarise(count = n_distinct(ASV_ID))
 
+species_summary <- results %>%
+  group_by(Category) %>%
+  summarise(count = n_distinct(Species_name))
+
 ## species in addition to category
 ## metadata option add-in
 ```
@@ -164,16 +168,17 @@ unique(results_summary$Category)
 
 ggplot(results_summary, aes(fill=Category, y=sum_reads, x=Project)) + 
     geom_bar(position="stack", stat="identity") +
-    scale_fill_manual(values = c("#9f040e", # Human
-                                 "#e30613", # Livestock
-                                 #"#fb747d", # Other
-                                 "#ff0000", # unassigned
-                                 "#03045e", # Bird
-                                 #"#023e8a", # Elasmobranch
-                                 "#0077b6", # Marine mammal
-                                 #"#0096c7", # Sea Turtle
-                                 "#48cae4" # Teleost Fish 
-                                 )) +
+    scale_fill_brewer(palette = "RdYlBu") +
+    # scale_fill_manual(values = c("#9f040e", # Human
+    #                              "#e30613", # Livestock
+    #                              "#fb747d", # Other
+    #                              "#ff0000", # unassigned
+    #                              "#03045e", # Bird
+    #                              "#023e8a", # Elasmobranch
+    #                              "#0077b6", # Marine mammal
+    #                              "#0096c7", # Sea Turtle
+    #                              "#48cae4" # Teleost Fish 
+    #                              )) +
     labs(fill = "Category") +
     theme_bw() + 
     xlab(" Month") + ylab("Raw reads") +
@@ -189,7 +194,7 @@ ggsave("example_output/Figures/Rawreads_percategory.png", width = 8, height = 5)
 ```
 
 
-Piechart 
+Reads Piechart 
 
 ```{r}
 ### User edits:
@@ -209,9 +214,15 @@ piechart_reads <- general_stats %>%
                    size = 3, nudge_x = 1, show.legend = FALSE) +
   coord_polar(theta = "y") +
   scale_fill_brewer(palette = "RdYlBu") +
-  theme_void() +
+  theme_bw() +
   theme(
-    plot.background = element_rect(fill = "white", colour = NA)
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_blank(),  # Remove panel border
+    panel.grid = element_blank(),    # Remove grid lines
+    axis.ticks = element_blank(),    # Remove axis ticks
+    axis.text = element_blank(),     # Remove axis text
+    axis.title = element_blank(),     # Remove axis titles
+    legend.position = "none"
   ) +
   ggtitle("% of raw reads") +
   xlab("") + ylab("") + labs(fill = "Category")
@@ -238,19 +249,59 @@ piechart_ASV <- ASV_summary %>%
                    size = 3, nudge_x = 1, show.legend = FALSE) +
   coord_polar(theta = "y") +
   scale_fill_brewer(palette = "RdYlBu") +
-  theme_void() +
+  theme_bw() +
   theme(
-    plot.background = element_rect(fill = "white", colour = NA)
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_blank(),  # Remove panel border
+    panel.grid = element_blank(),    # Remove grid lines
+    axis.ticks = element_blank(),    # Remove axis ticks
+    axis.text = element_blank(),     # Remove axis text
+    axis.title = element_blank(),     # Remove axis titles
+    legend.position = "none"
   ) +
   ggtitle("# of ASVs") +
   xlab("") + ylab("") + labs(fill = "Category")
 ```
 
+Number of species pie chart 
+
+```{r}
+piechart_spp <- species_summary %>%  
+  mutate(csum = rev(cumsum(rev(count))), 
+         pos = count/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), count/2, pos))
+
+piechart_spp <- species_summary %>% 
+  ggplot(., aes(x="", y = count, fill = Category)) +
+  geom_col(color = "black") +
+  geom_label_repel(data = piechart_spp,
+                   aes(y = pos, label = paste0(count)),
+                   size = 3, nudge_x = 1, show.legend = FALSE) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "RdYlBu") +
+  theme_bw() +
+  theme(
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_blank(),  # Remove panel border
+    panel.grid = element_blank(),    # Remove grid lines
+    axis.ticks = element_blank(),    # Remove axis ticks
+    axis.text = element_blank(),     # Remove axis text
+    axis.title = element_blank()     # Remove axis titles
+  ) +
+  ggtitle("# of species") +
+  xlab("") + ylab("") + labs(fill = "Category")
+```
 
 Plot together and export 
 
 ```{r}
-plot_grid(piechart_reads, piechart_ASV)
+plot_grid(piechart_reads, piechart_ASV, piechart_spp, 
+          ncol=3, 
+          rel_widths = c(2,2,3.075) 
+          #align = "hv"
+          )
+
+ggsave("example_output/Category_breakdown.png", width=10, height=4)
 ```
 
 

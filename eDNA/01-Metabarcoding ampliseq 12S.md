@@ -10,7 +10,46 @@ Scripts to run:
 4. 01b-ampliseq.sh
 5. 02-taxonomicID.sh  
 
-## Step 1: Assess quality of raw data  
+## Conda environment: Fisheries eDNA 
+
+GMGI Fisheries has a conda environment set-up with all the packages needed for this workflow. Code below was used to create this conda environment. **DO NOT REPEAT** every time user is running this workflow.
+
+```
+# Activate conda
+source ~/../../work/gmgi/miniconda3/bin/activate
+
+# Creating conda 
+conda create --name fisheries_eDNA
+
+# Installing packages needed for this workflow 
+conda install -c bioconda fastqc 
+conda install multiqc 
+conda install bioconda::nextflow 
+conda install conda-forge::singularity
+conda install bioconda::blast
+```
+
+The conda environment is started within each slurm script, but to activate conda environment outside of the slurm script to update packages or check what is installed:
+
+```
+# Activate conda
+source ~/../../work/gmgi/miniconda3/bin/activate
+
+# Activate fisheries eDNA conda environment 
+conda activate fisheries_eDNA
+
+# List all available environments 
+conda env list 
+
+# List all packages installed in fisheries_eDNA
+conda list 
+
+# Update a package
+conda update [package name]
+``` 
+ 
+
+## Assess quality of raw data  
 
 `00-fastqc.sh`: 
 
@@ -28,6 +67,10 @@ Scripts to run:
 
 ### USER TO-DO ### 
 ## 1. Set paths for your project
+
+# Activate conda environment
+source ~/../../work/gmgi/miniconda3/bin/activate
+conda activate fisheries_eDNA
 
 ## LOAD MODULES
 module load OpenJDK/19.0.1 ## dependency on NU Discovery cluster 
@@ -59,7 +102,7 @@ Notes:
 - Within the `out_dir` output folder, use `ls *html | wc` to count the number of html output files (1st/2nd column values). This should be equal to the --array range used and the number of raw data files. If not, the script missed some input files so address this before moving on.  
 
 
-## Step 2: Visualize quality of raw data  
+## Visualize quality of raw data  
 
 `00-multiqc.sh` 
 
@@ -79,6 +122,10 @@ Notes:
 ## 1. Set paths for your project
 ## 2. Optional: change file name (multiqc_raw.html) as desired
 
+# Activate conda environment
+source ~/../../work/gmgi/miniconda3/bin/activate
+conda activate fisheries_eDNA
+
 ## SET PATHS 
 ## fastqc_output = output from 00-fastqc.sh; fastqc program
 fastqc_output=""
@@ -89,13 +136,32 @@ multiqc --interactive ${fastqc_output} -o ${multiqc_dir} --filename multiqc_raw.
 ```
 
 To run:  
-- Activate conda environment `conda activate haddock_methylation` (to be changed; use haddock_methylation for now)  
 - `sbatch 00-multiqc.sh` 
 
 Notes:  
 - Depending on the number of files per project, multiqc can be quick to run without a slurm script. To do this, run each line separately in the command line after activating the conda environment.  
 
-## Step 3: Create metadata sheet for ampliseq 
+## nf-core/ampliseq 
+
+#### 12S primer sequences (required)
+
+Below is what we used for vertebrate testing between Riaz and Degenerate. Ampliseq will automatically calculate the reverse compliment and include this for us.
+
+MiFish 12S amplicon F: ACTGGGATTAGATACCCY   
+MiFish 12S amplicon R: TAGAACAGGCTCCTCTAG   
+
+#### Metadata sheet (optional) 
+
+The metadata file has to follow the QIIME2 specifications (https://docs.qiime2.org/2021.2/tutorials/metadata/). Below is a preview of the sample sheet used for this test. Keep the column headers the same for future use. The first column needs to be "ID" and can only contain numbers, letters, or "-". This is different than the sample sheet. NAs should be empty cells rather than "NA". 
+
+### Create samplesheet sheet for ampliseq 
+
+This file indicates the sample ID and the path to R1 and R2 files. Below is a preview of the sample sheet used in this test. File created on RStudio Interactive on Discovery Cluster using (`create_metadatasheets.R`).  
+
+- sampleID (required): Unique sample IDs, must start with a letter, and can only contain letters, numbers or underscores (no hyphons!).  
+- forwardReads (required): Paths to (forward) reads zipped FastQ files  
+- reverseReads (optional): Paths to reverse reads zipped FastQ files, required if the data is paired-end  
+- run (optional): If the data was produced by multiple sequencing runs, any string  
 
 *This is an R script, not slurm script. Open RStudio interactive on Discovery Cluster to run this script.*
 
@@ -157,7 +223,7 @@ sample_list %>% write.csv("/work/gmgi/Fisheries/eDNA/offshore_wind2023/metadata/
                           row.names=FALSE, quote = FALSE)
 ```
 
-## Step 4: Run nf-core/ampliseq (Cutadapt & DADA2)
+### Run nf-core/ampliseq (Cutadapt & DADA2)
 
 `01b-ampliseq.sh`:
 
@@ -180,8 +246,12 @@ sample_list %>% write.csv("/work/gmgi/Fisheries/eDNA/offshore_wind2023/metadata/
 ## 4. Adjust parameters as needed (below is Fisheries team default for 12S)
 
 # LOAD MODULES
-module load singularity/3.10.3
-module load nextflow/23.10.1
+# module load singularity/3.10.3
+# module load nextflow/23.10.1
+
+# Activate conda environment
+source ~/../../work/gmgi/miniconda3/bin/activate
+conda activate fisheries_eDNA
 
 # SET PATHS 
 metadata="" 
@@ -208,17 +278,75 @@ nextflow run nf-core/ampliseq -resume \
 To run:   
 - `sbatch 01b-ampliseq.sh` 
 
+## Blast ASV sequences (output from DADA2) against our 3 databases 
 
-## Step 5: Blast ASV sequences (output from DADA2) against our 3 databases 
+### Populating /work/gmgi/databases folder 
 
-Download ncbi-blast+ to `/work/gmgi/packages` using `wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz` and then `tar -zxvf ncbi-blast-2.16.0+-x64-linux.tar.gz`. NCBI latest: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/. Once downloaded, user does not need to repeat this.
+We use NCBI, Mitofish, and GMGI-12S databases. 
+
+#### Download NBCI
+
+**Option 1**: Download ncbi-blast+ to `/work/gmgi/packages` using `wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz` and then `tar -zxvf ncbi-blast-2.16.0+-x64-linux.tar.gz`. NCBI latest: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/. Once downloaded, user does not need to repeat this. I was struggling with the remote flag here within a slurm script.
+
+**Option 2**: Download 12S sequences from NCBI via CRABS: Creating Reference databases for Amplicon-Based Sequencing.
+
+CRABS requires python 3.9 so I created a new conda environment with this version: `conda create --name Env_py3.9 python=3.9`. Fisheries eDNA uses python 3.12. I was struggling to download CRABS in either conda environment... come back to this.
+
+https://github.com/gjeunen/reference_database_creator
+
+```
+conda activate Env_py3.9
+conda install -c bioconda crabs
+
+cd /work/gmgi/databases/12S/ncbi
+
+crabs db_download --source ncbi --database nucleotide --query '12S[All Fields]' --output 12S_ncbi_[date].fasta --keep_original no --batchsize 5000
+
+makeblastdb -in 12S_ncbi_[date].fasta -dbtype nucl -out 12S_ncbi_[date] -parse_seqids
+```
+
+**Option 3**: `blast` package is downloaded in the fisheries_eDNA conda environment with `conda install blast`. Install nt database `update_blastdb.pl --decompress nt` once inside the `work/gmgi/databases/ncbi/nt` folder. This is not ideal because it will take up more space and need to be updated.
+
+
+#### Download Mitofish 
 
 Check Mitofish webpage (https://mitofish.aori.u-tokyo.ac.jp/download/) for the most recent database version number. Compare to the `work/gmgi/databases/12S/reference_fasta/12S/Mitofish/` folder. If needed, update Mitofish database:
-1. `wget https://mitofish.aori.u-tokyo.ac.jp/species/detail/download/?filename=download%2F/complete_partial_mitogenomes.zip`  
-2. `unzip [file name]`  
-3. Rename the db using `mv mito-all Mitofish_vX.fasta` (replace X with version number)   
-4. Load ncbi-blast+ module: `module load ncbi-blast+/2.13.0`  
-5. Create ncbi db with `makeblastdb -in Mitofish_vX.fasta -dbtype nucl -out Mitofish_vX -parse_seqids` (replace X with version number)  
+
+```
+## download db 
+wget https://mitofish.aori.u-tokyo.ac.jp/species/detail/download/?filename=download%2F/complete_partial_mitogenomes.zip  
+
+## unzip 
+unzip 'index.html?filename=download%2F%2Fcomplete_partial_mitogenomes.zip'
+
+## clean headers 
+awk '/^>/ {print $1} !/^>/ {print}' mito-all > Mitofish_v4.02.fasta
+
+## remove excess files 
+rm mito-all* 
+rm index*
+
+## make NCBI db 
+## make sure fisheries_eDNA conda environment is activated or module load ncbi-blast+/2.13.0
+makeblastdb -in Mitofish_v4.02.fasta -dbtype nucl -out Mitofish_v4.02 -parse_seqids
+```
+
+Alternate option: Download Mitofish db with CRABS. This program and will download and format the db accordingly.   
+
+```
+git clone https://github.com/gjeunen/reference_database_creator.git
+
+## Download Mitofish 
+crabs db_download --source mitofish --output /work/gmgi/databases/12S/Mitofish/mitofish.fasta --keep_original yes
+### I couldn't get the function crabs to work 
+```
+
+#### Download GMGI 12S 
+
+
+
+
+### Running taxonomic ID script 
 
 `02-taxonomicID.sh`: 
 
@@ -241,6 +369,10 @@ Check Mitofish webpage (https://mitofish.aori.u-tokyo.ac.jp/download/) for the m
 ## can use module on NU cluster or own ncbi-blast+
 # module load ncbi-blast+/2.13.0
 ncbi_program="/work/gmgi/packages/ncbi-blast-2.16.0+"
+
+# Activate conda environment
+source ~/../../work/gmgi/miniconda3/bin/activate
+conda activate fisheries_eDNA
 
 # SET PATHS 
 ASV_fasta=""
@@ -286,7 +418,3 @@ cat ${out}/NCBI_sp.txt | ${taxonkit}/taxonkit reformat -I 1 -r "Unassigned" > ${
 
 To run:  
 - `sbatch 02-taxonomicID.sh` 
-
-Notes:  
-- Emma currently troubleshooting running ncbi -remote within a slurm script. Can run these lines of code just on command line and will work fine.
-

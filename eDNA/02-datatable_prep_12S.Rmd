@@ -231,8 +231,6 @@ Based on the output above, user needs to make some choices. In the excel spreads
 
 Load choice edited dataset. No user edits. 
 
-- make column before edited to include choice
-
 ```{r}
 multiple_hit_choice_edited <- read_xlsx("example_output/Taxonomic_assignments/Choice_required_GMGI_multiplehits_edited.xlsx") %>%
   ## selecting the choices made
@@ -361,31 +359,29 @@ ASV_table_taxID <- ASV_table %>%
 
 ## Edit taxonomy annotations based on mismatch table
 
-Override any annotations:
+Override any annotations with edited taxonomic identification table.   
+No user edits.
 
 ```{r}
-### User edits:
-### 1. Add mutate cases using the format ASV_ID == "" ~ ""
-### example: ASV_ID == "abb58e582fcc5bd9d2526b4bf98ed7a3" ~ "Ardenna griseus or Ardenna gravis",
-### Keep the TRUE ~ Species_name at the end
+## read in edited df 
+taxonomic_choice <- read_xlsx("data/BLASToutput/SampleReport_taxonomic_ID_edited.xlsx") %>%
+    ## selecting only columns needed 
+  dplyr::select(ASV_ID, Choice)  
 
-### 2. Add ifelse() cases using the format ifelse(grepl('', Species_name), "", Species_name
-### example: ifelse(grepl('Homo sapiens', Species_name), "Homo sapiens", Species_name
-### example: ifelse(grepl('Phyllozelus siccus', Species_name), "unassigned", Species_name)
+# Create a new edited df
+ASV_table_taxID_edited <- ASV_table_taxID 
 
-ASV_table_taxID <- ASV_table_taxID %>%
-  ## Use mutate case_when() for specific ASV IDs
-  mutate(Species_name = case_when(
-    ASV_ID == "" ~ "",
-    TRUE ~ Species_name)) %>%
-
-  ## OR Use ifelse() function to find entries with specific content that might apply to mulitple ASVs
-  mutate(Species_name = ifelse(grepl('eukaryotic', Species_name), "unassigned", Species_name),
-         
-         ## example below from example dataset - remove for your own data
-         Species_name = ifelse(grepl('Liparis', Species_name), "unassigned", Species_name),
-         Species_name = ifelse(grepl('Schizocardium', Species_name), "unassigned", Species_name))
-
+# Loop through each row of the dataframe
+for (i in taxonomic_choice$ASV_ID) {
+  # Extract the current row (will do this for each ASV_ID in the choice df)
+  current_row <- taxonomic_choice %>% subset(ASV_ID==i)
+  
+  # Apply filter based on the current row's condition
+  ASV_table_taxID_edited <- ASV_table_taxID_edited %>%
+    mutate(Species_name = case_when(
+          ASV_ID == current_row$ASV_ID ~ current_row$Choice,
+           TRUE ~ Species_name))
+}
 ```
 
 ### Confirm all entries are dealt with
@@ -394,7 +390,7 @@ No user edits.
 
 ```{r}
 ## Output will be blank
-ASV_table_taxID %>% dplyr::select(Species_name) %>% distinct() %>% 
+ASV_table_taxID_edited %>% dplyr::select(Species_name) %>% distinct() %>% 
   filter(., grepl(";", Species_name)) %>% arrange(Species_name) 
 ```
 
@@ -404,12 +400,12 @@ No user edits.
 
 ```{r}
 ### add common name column to df
-ASV_table_taxID <- ASV_table_taxID %>%
+ASV_table_taxID_edited <- ASV_table_taxID_edited %>%
   left_join(., gmgi_db %>% dplyr::select(Species_name, Common_name, Category) %>% distinct(), by = "Species_name") %>%
   relocate(., c(Common_name, Category), .after = Species_name)
 
 ### print entries with no common name
-ASV_table_taxID %>% dplyr::select(Species_name, Common_name) %>% filter(is.na(Common_name)) %>% distinct()
+ASV_table_taxID_edited %>% dplyr::select(Species_name, Common_name) %>% filter(is.na(Common_name)) %>% distinct()
 ```
 
 Editing common names and category when needed.
@@ -420,7 +416,7 @@ Editing common names and category when needed.
 ### example: ifelse(grepl('unassigned', Species_name), "unassigned", Common_name)
 ### 2. Add mutate cases using the format ifelse(grepl('', Species_name), "", Category
 
-ASV_table_taxID <- ASV_table_taxID %>% 
+ASV_table_taxID_edited <- ASV_table_taxID_edited %>% 
   # changing specific entries for Common name
   mutate(Common_name = ifelse(grepl('unassigned', Species_name), "unassigned", Common_name),
          
@@ -437,81 +433,69 @@ ASV_table_taxID <- ASV_table_taxID %>%
 
 ## printing list of species name without common names 
 ## after additions to mutate function above, this output should be zero 
-ASV_table_taxID %>% dplyr::select(Species_name, Common_name) %>% filter(is.na(Common_name)) %>% distinct()
+ASV_table_taxID_edited %>% dplyr::select(Species_name, Common_name) %>% filter(is.na(Common_name)) %>% distinct()
 ```
 
 # Filtering: Filter ASV by less than 0.1% reads and then collapse by group
 
 ## Filter out reads that are less than 0.1% of ASV (row) total per sample. 
 
-Create an output of what you're losing with filtering
-Can sumVar be ASV_sum
+Create an output of what you're losing with filtering. 
+
+No user edits.
 
 ```{r}
-### User edits:
-### 1. In mutate(sumVar = ), change FIRST_SAMPLE:LAST_SAMPLE to sample 1 column and the last sample column 
-### 2. In mutate(across(.cols = )), change FIRST_SAMPLE:LAST_SAMPLE to sample 1 column and the last sample column
-### example: C1_bottom:Sed_Neg2
-
-ASV_table_taxID_filtered <- ASV_table_taxID %>%
+ASV_table_taxID_filtered <- ASV_table_taxID_edited %>%
   ## telling the df we are doing the following function by rows (ASVs)
   rowwise() %>%
   
-  ## calculating rowSum (total reads per ASV)
-  ## sum(c_across(FIRST_SAMPLE:LAST_SAMPLE))
-  mutate(sumVar = sum(c_across(OW_501_4Bottom:Station69))) %>% relocate(., sumVar, .after = Species_name) %>%
-  
   ## filtering out any values that are less than 0.001 of the total ASV read # in each sample
-  # FIRST_SAMPLE:LAST_SAMPLE
-  mutate(across(.cols = (OW_501_4Bottom:Station69),
-                .fns = ~ ifelse((.x/sumVar)<0.001, NA, .x))) %>% dplyr::select(-sumVar) %>% ungroup()
+  mutate(across(.cols = (7:ncol(.)),            
+                .fns = ~ ifelse((.x/ASV_sum)<0.001, NA, .x))) %>% ungroup()
+
+## output of what we're losing
+ASV_table_taxID_edited %>% rowwise() %>%
+  mutate(across(.cols = (7:ncol(.)),            
+                .fns = ~ ifelse((.x/ASV_sum)>0.001, NA, .x))) %>% ungroup() %>% write_xlsx("data/ASV_reads_filtered_out.xlsx")
+
 
 ## Export ASV break-down for 03-data_quality.Rmd
 ASV_table_taxID_filtered %>% dplyr::select(ASV_ID, Species_name, Common_name, Category, ASV_sum, ASV_rank) %>%
-  write_xlsx("example_output/ASV_breakdown.xlsx")
+  write_xlsx("data/ASV_breakdown.xlsx")
 ```
 
 
 # Collapsing read counts by species name
 
-Col 7: last col?
+No user edits.
 
 ```{r}
-### User edits:
-### 1. In mutate(sumVar = ), change FIRST_SAMPLE:LAST_SAMPLE to sample 1 column and the last sample column 
-### example: C1_bottom:Sed_Neg2
-
 ASV_table_taxID_collapsed <- ASV_table_taxID_filtered %>% 
   # removing original ASV_ID to collapse
   dplyr::select(-ASV_ID) %>%  
   
   ## group by Species_name and sample
-  group_by(Species_name, Common_name, Category) %>%
+  dplyr::group_by(Species_name, Common_name, Category) %>%
   
   ## sum down column by species name and sample to collapse
-  # FIRST_SAMPLE:LAST_SAMPLE
-  summarise(across(c(OW_501_4Bottom:Station69), ~ sum(., na.rm = TRUE))) %>% ungroup()
-
+  summarise(across(6:last_col(), ~ sum(., na.rm = TRUE))) %>% ungroup()
 ```
 
 
 # Creating results output 
 
-Raw reads
+Raw reads results output.   
+No user edits.  
 
 ```{r}
 ## Raw reads matrix (wide format)
 ASV_table_taxID_collapsed %>% write_xlsx(results_rawreads_matrix)
 
-### User edits:
-### 1. In gather("sampleID", "reads", ..), change FIRST_SAMPLE:LAST_SAMPLE to sample 1 column and the last sample column 
-### example: C1_bottom:Sed_Neg2
-
 ## Raw reads long format and filtering out entries with zero reads
 ASV_table_taxID_collapsed %>% 
-  gather("SampleID", "reads", c(OW_501_4Bottom:Station69)) %>%
+  gather("sampleID", "reads", c(4:last_col())) %>%
   filter(reads > 0) %>% 
-  left_join(., meta, by = "SampleID") %>%
+  left_join(., meta, by = "sampleID") %>%
   write_xlsx(results_rawreads_long)
 ```
 
@@ -535,8 +519,8 @@ data_relativeab %>% write_xlsx(results_relab_matrix)
 
 ## Relative abundance long format with metadata 
 data_relativeab %>%
-  gather("SampleID", "relab", c(OW_501_4Bottom:Station69)) %>%
-  left_join(., meta, by = "SampleID") %>%
+  gather("sampleID", "relab", c(4:last_col())) %>%
+  left_join(., meta, by = "sampleID") %>%
   write_xlsx(results_relab_long)
 ```
 
