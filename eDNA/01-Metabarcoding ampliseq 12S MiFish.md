@@ -1,12 +1,17 @@
-# Metabarcoding workflow for 12S amplicon sequencing with Riaz primers
+# Metabarcoding workflow for 12S amplicon sequencing with MiFish primers
 
 *page details in progress.* 
 
-The 12S rRNA gene region of the mitogenome is ~950 bp. There are two popular primer sets to amplify two different regions of 12S: Riaz and MiFish. The following workflow includes script specific to the Riaz primer set.
+The 12S rRNA gene region of the mitogenome is ~950 bp. There are two popular primer sets to amplify two different regions of 12S: Riaz and MiFish. The following workflow includes script specific to the **MiFish Universal (U) or Elasmobranch (E)** primer set.
 
 ![](https://th.bing.com/th/id/OIP.EbXPYETYLBPEymNEIVEGLQHaCc?rs=1&pid=ImgDetMain)
 
-Citation: [Riaz et al. 2011](https://academic.oup.com/nar/article/39/21/e145/1105558)
+Citation: [Miya et al. 2015](https://royalsocietypublishing.org/doi/full/10.1098/rsos.150088)
+
+The MiFish-U and MiFish-E primers are two variants of universal PCR primers developed for metabarcoding environmental DNA (eDNA) from fishes. Here are the key differences between them:  
+- *Target species*: MiFish-U (Universal) is designed to amplify DNA from a wide range of bony fishes (Osteichthyes). MiFish-E (Elasmobranch) is specifically optimized for cartilaginous fishes like sharks and rays (Elasmobranchii).   
+- *Primer sequences*: While both primer sets target the mitochondrial 12S rRNA gene, they have slightly different nucleotide sequences to accommodate the genetic variations between bony and cartilaginous fishes.  
+- *Amplicon length*: MiFish-U typically produces amplicons around 170-180 base pairs long and MiFish-E amplicons are usually slightly shorter, around 160-170 base pairs. 
 
 Scripts to run: 
 
@@ -151,15 +156,14 @@ Notes:
 
 #### 12S primer sequences (required)
 
-Below is what we used for 12S amplicon sequencing. Ampliseq will automatically calculate the reverse compliment and include this for us.
+Below is what we used for 12S amplicon sequencing. Ampliseq will automatically calculate and include the reverse compliment sequence. 
 
-Riaz 12S amplicon F Original: ACTGGGATTAGATACCCC  
-Riaz 12S amplicon F Degenerate: ACTGGGATTAGATACCCY     
-Riaz 12S amplicon R: TAGAACAGGCTCCTCTAG     
+MiFish-U 12S amplicon F: GTCGGTAAAACTCGTGCCAGC  
+MiFish-U 12S amplicon R: CATAGTGGGGTATCTAATCCCAGTTTG       
 
-MiFish 12S amplicon F: GTCGGTAAAACTCGTGCCAGC  
-MiFish 12S amplicon R: GTTTGACCCTAATCTATGGGGTGATAC  
-
+MiFish-E 12S amplicon F: GTTGGTAAATCTCGTGCCAGC    
+MiFish-E 12S amplicon R: CATAGTGGGGTATCTAATCCTAGTTTG    
+  
 #### Metadata sheet (optional) 
 
 The metadata file has to follow the QIIME2 specifications (https://docs.qiime2.org/2021.2/tutorials/metadata/). Below is a preview of the sample sheet used for this test. Keep the column headers the same for future use. The first column needs to be "ID" and can only contain numbers, letters, or "-". This is different than the sample sheet. NAs should be empty cells rather than "NA". 
