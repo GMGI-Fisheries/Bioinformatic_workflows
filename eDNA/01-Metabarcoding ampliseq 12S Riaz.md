@@ -1,4 +1,4 @@
-# Metabarcoding workflow for 12S amplicon sequencing 
+# Metabarcoding workflow for 12S amplicon sequencing
 
 *page details in progress.* 
 
@@ -27,6 +27,7 @@ conda install multiqc
 conda install bioconda::nextflow 
 conda install conda-forge::singularity
 conda install bioconda::blast
+conda install nextflow
 ```
 
 The conda environment is started within each slurm script, but to activate conda environment outside of the slurm script to update packages or check what is installed:
@@ -48,7 +49,6 @@ conda list
 conda update [package name]
 ``` 
  
-
 ## Step 2: Assess quality of raw data  
 
 `00-fastqc.sh`: 
@@ -150,9 +150,6 @@ Below is what we used for 12S amplicon sequencing. Ampliseq will automatically c
 Riaz 12S amplicon F Original: ACTGGGATTAGATACCCC  
 Riaz 12S amplicon F Degenerate: ACTGGGATTAGATACCCY     
 Riaz 12S amplicon R: TAGAACAGGCTCCTCTAG     
-
-MiFish 12S amplicon F: GTCGGTAAAACTCGTGCCAGC  
-MiFish 12S amplicon R: GTTTGACCCTAATCTATGGGGTGATAC  
 
 #### Metadata sheet (optional) 
 
