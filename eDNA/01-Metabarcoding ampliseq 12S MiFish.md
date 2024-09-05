@@ -1,10 +1,12 @@
-# Metabarcoding workflow for 12S amplicon sequencing for Riaz primers
+# Metabarcoding workflow for 12S amplicon sequencing with Riaz primers
 
-The 12S rRNA gene region of the mitogenome is ~950 bp. There are two popular primer sets to amplify two different regions of 12S: Riaz and MiFish.
+*page details in progress.* 
+
+The 12S rRNA gene region of the mitogenome is ~950 bp. There are two popular primer sets to amplify two different regions of 12S: Riaz and MiFish. The following workflow includes script specific to the Riaz primer set.
 
 ![](https://th.bing.com/th/id/OIP.EbXPYETYLBPEymNEIVEGLQHaCc?rs=1&pid=ImgDetMain)
 
-*page details in progress.* 
+Citation: [Riaz et al. 2011](https://academic.oup.com/nar/article/39/21/e145/1105558)
 
 Scripts to run: 
 
