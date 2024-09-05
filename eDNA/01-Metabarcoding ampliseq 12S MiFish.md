@@ -23,6 +23,8 @@ Scripts to run:
 
 ## Step 1: Conda environment: Fisheries eDNA 
 
+Background information on Conda: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html. 
+
 GMGI Fisheries has a conda environment set-up with all the packages needed for this workflow. Code below was used to create this conda environment. **DO NOT REPEAT** every time user is running this workflow.
 
 ```
@@ -58,19 +60,24 @@ conda list
 
 # Update a package
 conda update [package name]
+
+# Update nextflow ampliseq workflow 
+nextflow pull nf-core/ampliseq
 ``` 
  
 ## Step 2: Assess quality of raw data  
+
+Background information on FASTQC: https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon-flipped/lessons/05_qc_running_fastqc_interactively.html. 
 
 `00-fastqc.sh`: 
 
 ```
 #!/bin/bash
-#SBATCH --error=script_output/fastqc_output/"%x_error.%j" #if your job fails, the error report will be put in this file
-#SBATCH --output=script_output/fastqc_output/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
+#SBATCH --error=output/fastqc_output/"%x_error.%j" #if your job fails, the error report will be put in this file
+#SBATCH --output=output/fastqc_output/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
 #SBATCH --partition=short
 #SBATCH --nodes=1
-#SBATCH --time=20:00:00
+#SBATCH --time=5:00:00
 #SBATCH --job-name=fastqc
 #SBATCH --mem=3GB
 #SBATCH --ntasks=24
@@ -83,13 +90,9 @@ conda update [package name]
 source ~/../../work/gmgi/miniconda3/bin/activate
 conda activate fisheries_eDNA
 
-## LOAD MODULES
-module load OpenJDK/19.0.1 ## dependency on NU Discovery cluster 
-module load fastqc/0.11.9
-
 ## SET PATHS 
-raw_path=""
-out_dir=""
+raw_path="" 
+out_dir="" 
 
 ## CREATE SAMPLE LIST FOR SLURM ARRAY
 ### 1. Create list of all .gz files in raw data path
@@ -106,7 +109,7 @@ fastqc ${i} --outdir ${out_dir}
 ```
 
 To run:    
-- Start slurm array (e.g., with 138 files) = `sbatch --array=0-136 01-fastqc.sh`.
+- Start slurm array (e.g., with 138 files) = `sbatch --array=0-136 00-fastqc.sh`.
 
 Notes:  
 - This is going to output *many* error and output files. After job completes, use `cat *output.* > ../fastqc_output.txt` to create one file with all the output and `cat *error.* > ../fastqc_error.txt` to create one file with all of the error message outputs. 
@@ -115,12 +118,14 @@ Notes:
 
 ## Step 3: Visualize quality of raw data  
 
+Background information on MULTIQC: https://multiqc.info/docs/#:~:text=MultiQC%20is%20a%20reporting%20tool%20that%20parses%20results,experiments%20containing%20multiple%20samples%20and%20multiple%20analysis%20steps.
+
 `00-multiqc.sh` 
 
 ```
 #!/bin/bash
-#SBATCH --error=output_messages/"%x_error.%j" #if your job fails, the error report will be put in this file
-#SBATCH --output=output_messages/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
+#SBATCH --error=output/"%x_error.%j" #if your job fails, the error report will be put in this file
+#SBATCH --output=output/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
 #SBATCH --partition=short
 #SBATCH --nodes=1
 #SBATCH --time=10:00:00
@@ -153,6 +158,8 @@ Notes:
 - Depending on the number of files per project, multiqc can be quick to run without a slurm script. To do this, run each line separately in the command line after activating the conda environment.  
 
 ## Step 4: nf-core/ampliseq 
+
+https://nf-co.re/ampliseq/2.8.0/
 
 #### 12S primer sequences (required)
 
@@ -239,7 +246,7 @@ sample_list %>% write.csv("/work/gmgi/Fisheries/eDNA/offshore_wind2023/metadata/
 
 ### Run nf-core/ampliseq (Cutadapt & DADA2)
 
-Some parameters will change based on Riaz or MiFish primer set. 
+Update ampliseq workflow if needed: `nextflow pull nf-core/ampliseq`. 
 
 `01b-ampliseq.sh`:
 
