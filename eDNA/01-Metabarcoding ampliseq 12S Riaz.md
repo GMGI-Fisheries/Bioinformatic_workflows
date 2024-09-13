@@ -344,7 +344,7 @@ rm index*
 
 ## make NCBI db 
 ## make sure fisheries_eDNA conda environment is activated or module load ncbi-blast+/2.13.0
-makeblastdb -in Mitofish_v4.02.fasta -dbtype nucl -out Mitofish_v4.02 -parse_seqids
+makeblastdb -in Mitofish_v4.02.fasta -dbtype nucl -out Mitofish_v4.02.fasta -parse_seqids
 ```
 
 Alternate option: Download Mitofish db with CRABS. This program and will download and format the db accordingly.   

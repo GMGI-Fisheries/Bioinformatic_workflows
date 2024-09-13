@@ -351,7 +351,7 @@ rm index*
 
 ## make NCBI db 
 ## make sure fisheries_eDNA conda environment is activated or module load ncbi-blast+/2.13.0
-makeblastdb -in Mitofish_v4.02.fasta -dbtype nucl -out Mitofish_v4.02 -parse_seqids
+makeblastdb -in Mitofish_v4.02.fasta -dbtype nucl -out Mitofish_v4.02.fasta -parse_seqids
 ```
 
 Alternate option: Download Mitofish db with CRABS. This program and will download and format the db accordingly.   
@@ -363,10 +363,6 @@ git clone https://github.com/gjeunen/reference_database_creator.git
 crabs db_download --source mitofish --output /work/gmgi/databases/12S/Mitofish/mitofish.fasta --keep_original yes
 ### I couldn't get the function crabs to work 
 ```
-
-#### Download GMGI 12S 
-
-
 
 
 ### Running taxonomic ID script 
@@ -407,7 +403,7 @@ taxonkit="/work/gmgi/databases/taxonkit"
 
 #### DATABASE QUERY ####
 ### NCBI database 
-${ncbi_program}/bin/blastn -remote -db nt \
+blastn -remote -db nt \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_NCBI.txt \
    -max_target_seqs 10 -perc_identity 100 -qcov_hsp_perc 95 \
@@ -415,19 +411,11 @@ ${ncbi_program}/bin/blastn -remote -db nt \
    -verbose
 
 ## Mitofish database 
-
-${ncbi_program}/bin/blastn -db ${mito}/*.fasta \
+blastn -db ${mito}/*.fasta \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_Mito.txt \
    -max_target_seqs 10 -perc_identity 100 -qcov_hsp_perc 95 \
    -outfmt '6  qseqid   sseqid  pident   length   mismatch gapopen  qstart   qend  sstart   send  evalue   bitscore'
-
-## GMGI database 
-${ncbi_program}/bin/blastn -db ${gmgi}/*.fasta \
-   -query ${ASV_fasta}/ASV_seqs.len.fasta \
-   -out ${out}/BLASTResults_GMGI.txt \
-   -max_target_seqs 10 -perc_identity 98 -qcov_hsp_perc 95 \
-   -outfmt '6  qseqid   sseqid   pident   length   mismatch gapopen  qstart   qend  sstart   send  evalue   bitscore'
 
 ############################
 
