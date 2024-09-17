@@ -167,7 +167,7 @@ We use ampliseq for the following programs:
 
 We skip the taxonomic assignment because we use 3-db approach described in the next section. 
 
-#### 12S primer sequences (required)
+### 12S primer sequences (required)
 
 Below is what we used for 12S amplicon sequencing. Ampliseq will automatically calculate the reverse compliment and include this for us.
 
@@ -175,7 +175,7 @@ Riaz 12S amplicon F Original: ACTGGGATTAGATACCCC
 Riaz 12S amplicon F Degenerate: ACTGGGATTAGATACCCY     
 Riaz 12S amplicon R: TAGAACAGGCTCCTCTAG     
 
-#### Metadata sheet (optional) 
+### Metadata sheet (optional) 
 
 The metadata file has to follow the QIIME2 specifications (https://docs.qiime2.org/2021.2/tutorials/metadata/). Below is a preview of the sample sheet used for this test. Keep the column headers the same for future use. The first column needs to be "ID" and can only contain numbers, letters, or "-". This is different than the sample sheet. NAs should be empty cells rather than "NA". 
 
