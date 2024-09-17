@@ -154,7 +154,18 @@ Notes:
 
 ## Step 4: nf-core/ampliseq 
 
-https://nf-co.re/ampliseq/2.8.0/
+[Nf-core](https://nf-co.re/): A community effort to collect a curated set of analysis pipelines built using [Nextflow](https://www.nextflow.io/).  
+Nextflow: scalable and reproducible scientific workflows using software containers, used to build wrapper programs like the one we use here.  
+
+https://nf-co.re/ampliseq/2.11.0: nfcore/ampliseq is a bioinformatics analysis pipeline used for amplicon sequencing, supporting denoising of any amplicon and supports a variety of taxonomic databases for taxonomic assignment including 16S, ITS, CO1 and 18S. 
+
+![](https://raw.githubusercontent.com/nf-core/ampliseq/2.11.0//docs/images/ampliseq_workflow.png)
+
+We use ampliseq for the following programs:  
+- [Cutadapt](https://journal.embnet.org/index.php/embnetjournal/article/view/200) is trimming primer sequences from sequencing reads. Primer sequences are non-biological sequences that often introduce point mutations that do not reflect sample sequences. This is especially true for degenerated PCR primer. If primer trimming would be omitted, artifactual amplicon sequence variants might be computed by the denoising tool or sequences might be lost due to become labelled as PCR chimera.  
+- [DADA2](https://www.nature.com/articles/nmeth.3869) performs fast and accurate sample inference from amplicon data with single-nucleotide resolution. It infers exact amplicon sequence variants (ASVs) from amplicon data with fewer false positives than many other methods while maintaining high sensitivity.  
+
+We skip the taxonomic assignment because we use 3-db approach described in the next section. 
 
 #### 12S primer sequences (required)
 
@@ -177,6 +188,13 @@ This file indicates the sample ID and the path to R1 and R2 files. Below is a pr
 - reverseReads (optional): Paths to reverse reads zipped FastQ files, required if the data is paired-end  
 - run (optional): If the data was produced by multiple sequencing runs, any string  
 
+| sampleID | forwardReads              | reverseReads              | run |
+|----------|---------------------------|---------------------------|-----|
+| sample1  | ./data/S1_R1_001.fastq.gz | ./data/S1_R2_001.fastq.gz | A   |
+| sample2  | ./data/S2_fw.fastq.gz     | ./data/S2_rv.fastq.gz     | A   |
+| sample3  | ./S4x.fastq.gz            | ./S4y.fastq.gz            | B   |
+| sample4  | ./a.fastq.gz              | ./b.fastq.gz              | B   |
+
 *This is an R script, not slurm script. Open RStudio interactive on Discovery Cluster to run this script.*
 
 Prior to running R script, use the `rawdata` file created for the fastqc slurm array from within the raw data folder to create a list of files. Below is an example from our Offshore Wind project but the specifics of the sampleID will be project dependent. This project had four sequencing runs with different file names. 
@@ -184,39 +202,18 @@ Prior to running R script, use the `rawdata` file created for the fastqc slurm a
 `01a-metadata.R`
 
 ```
-## Creating sample sheet for offshore wind eDNA project 
-
-### Step 1: In terminal 
-
-# cd raw_data 
-# ls * > ../metadata/sample_list.txt
-
-### Resume steps below
+## Load libraries 
 
 library(dplyr)
 library(stringr)
-library(strex)
-#library(filesstrings)
+library(strex) 
 
 ### Read in sample sheet 
 
 sample_list <- read.delim2("/work/gmgi/Fisheries/eDNA/offshore_wind2023/raw_data/rawdata", header=F) %>% 
   dplyr::rename(forwardReads = V1) %>%
   mutate(sampleID = str_after_nth(forwardReads, "data/", 1),
-         sampleID = str_before_nth(sampleID, "_R", 1),
-         sampleID = gsub("Degen", "", sampleID),
-         sampleID = gsub("_L001", "", sampleID),
-         sampleID = gsub("Bottom", "_B", sampleID),
-         sampleID = gsub("Surface", "_S", sampleID),
-         sampleID = gsub("NA", "_NA", sampleID),
-         sampleID = gsub("2B", "2B_NA", sampleID),
-         sampleID = gsub("2A", "2A_NA", sampleID),
-         sampleID = gsub("1A", "1A_NA", sampleID),
-         sampleID = gsub("1B", "1B_NA", sampleID),
-         sampleID = gsub("Blank_1", "BK1", sampleID),
-         sampleID = gsub("Blank_2", "BK2", sampleID),
-         sampleID = ifelse(!grepl('July', sampleID), sub("_.*", "", sampleID), sampleID)
-         )
+         sampleID = str_before_nth(sampleID, "_R", 1))
 
 # creating sample ID 
 sample_list$sampleID <- gsub("-", "_", sample_list$sampleID)
@@ -245,8 +242,8 @@ Update ampliseq workflow if needed: `nextflow pull nf-core/ampliseq`.
 
 ```
 #!/bin/bash
-#SBATCH --error=output_messages/"%x_error.%j" #if your job fails, the error report will be put in this file
-#SBATCH --output=output_messages/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
+#SBATCH --error=output/"%x_error.%j" #if your job fails, the error report will be put in this file
+#SBATCH --output=output/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
 #SBATCH --partition=short
 #SBATCH --nodes=1
 #SBATCH --time=20:00:00
@@ -258,7 +255,7 @@ Update ampliseq workflow if needed: `nextflow pull nf-core/ampliseq`.
 ### USER TO-DO ### 
 ## 1. Set paths for project 
 ## 2. Adjust SBATCH options above (time, mem, ntasks, etc.) as desired  
-## 3. Fill in F and R primer information (no reverse compliment)
+## 3. Fill in F primer information based on primer type (no reverse compliment needed)
 ## 4. Adjust parameters as needed (below is Fisheries team default for 12S)
 
 # LOAD MODULES
@@ -277,7 +274,7 @@ nextflow run nf-core/ampliseq -resume \
    -profile singularity \
    --input ${metadata}/samplesheet.csv \
    --FW_primer "" \
-   --RV_primer "" \
+   --RV_primer "TAGAACAGGCTCCTCTAG" \
    --outdir ${output_dir} \
    --trunclenf 100 \
    --trunclenr 100 \
@@ -293,6 +290,39 @@ nextflow run nf-core/ampliseq -resume \
 
 To run:   
 - `sbatch 01b-ampliseq.sh` 
+
+#### Files generated by ampliseq 
+
+Pipeline summary reports:  
+- `summary_report/`
+- `summary_report.html`: pipeline summary report as standalone HTML file that can be viewed in your web browser.
+- `*.svg*`: plots that were produced for (and are included in) the report.
+- `versions.yml`: software versions used to produce this report.
+
+Preprocessing:  
+- FastQC: `fastqc/` and `*_fastqc.html`: FastQC report containing quality metrics for your untrimmed raw fastq files.  
+- Cutadapt: `cutadapt/` and `cutadapt_summary.tsv`: summary of read numbers that pass cutadapt  
+- MultiQC: `multiqc`, `multiqc_data/`, `multiqc_plots/` with `multiqc_report.html`: a standalone HTML file that can be viewed in your web browser; 
+
+ASV inferrence with DADA2:  
+- `dada2/`, `dada2/args/`, `data2/log/` 
+   - `ASV_seqs.fasta`: Fasta file with ASV sequences.
+   - `ASV_table.tsv`: Counts for each ASV sequence.
+   - `DADA2_stats.tsv`: Tracking read numbers through DADA2 processing steps, for each sample.
+   - `DADA2_table.rds`: DADA2 ASV table as R object.
+   - `DADA2_table.tsv`: DADA2 ASV table.  
+- `dada2/QC/`
+   - `*.err.convergence.txt`: Convergence values for DADA2's dada command, should reduce over several magnitudes and approaching 0.  
+   - `*.err.pdf`: Estimated error rates for each possible transition. The black line shows the estimated error rates after convergence of the machine-learning algorithm. The red line shows the error rates expected under the nominal definition of the Q-score. The estimated error rates (black line) should be a good fit to the observed rates (points), and the error rates should drop with increased quality.  
+   - `*_qual_stats.pdf`: Overall read quality profiles: heat map of the frequency of each quality score at each base position. The mean quality score at each position is shown by the green line, and the quartiles of the quality score distribution by the orange lines. The red line shows the scaled proportion of reads that extend to at least that position.  
+   - `*_preprocessed_qual_stats.pdf`: Same as above, but after preprocessing.  
+
+We add an ASV length filter that will output `asv_length_filter/` with:  
+- `ASV_seqs.len.fasta`: Fasta file with filtered ASV sequences.  
+- `ASV_table.len.tsv`: Counts for each filtered ASV sequence.  
+- `ASV_len_orig.tsv`: ASV length distribution before filtering.  
+- `ASV_len_filt.tsv`: ASV length distribution after filtering.  
+- `stats.len.tsv`: Tracking read numbers through filtering, for each sample.  
 
 ## Step 5: Blast ASV sequences (output from DADA2) against our 3 databases 
 
