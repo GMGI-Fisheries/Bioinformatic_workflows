@@ -398,8 +398,8 @@ crabs db_download --source mitofish --output /work/gmgi/databases/12S/Mitofish/m
 
 ```
 #!/bin/bash
-#SBATCH --error=output_messages/"%x_error.%j" #if your job fails, the error report will be put in this file
-#SBATCH --output=output_messages/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
+#SBATCH --error=output/"%x_error.%j" #if your job fails, the error report will be put in this file
+#SBATCH --output=output/"%x_output.%j" #once your job is completed, any final job report comments will be put in this file
 #SBATCH --partition=short
 #SBATCH --nodes=1
 #SBATCH --time=20:00:00
