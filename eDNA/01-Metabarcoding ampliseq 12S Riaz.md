@@ -36,6 +36,7 @@ conda install bioconda::nextflow
 conda install conda-forge::singularity
 conda install bioconda::blast
 conda install nextflow
+conda install blast
 ```
 
 The conda environment is started within each slurm script, but to activate conda environment outside of the slurm script to update packages or check what is installed:
@@ -104,7 +105,7 @@ fastqc ${i} --outdir ${out_dir}
 ```
 
 To run:    
-- Start slurm array (e.g., with 138 files) = `sbatch --array=0-136 00-fastqc.sh`.
+- Start slurm array (e.g., with 138 files) = `sbatch --array=0-137 00-fastqc.sh`.
 
 Notes:  
 - This is going to output *many* error and output files. After job completes, use `cat *output.* > ../fastqc_output.txt` to create one file with all the output and `cat *error.* > ../fastqc_error.txt` to create one file with all of the error message outputs. 
@@ -330,31 +331,24 @@ We add an ASV length filter that will output `asv_length_filter/` with:
 
 We use NCBI, Mitofish, and GMGI-12S databases. 
 
-#### Download NBCI
+#### Download and/or update NBCI blast nt database
 
-**Option 1**: Download ncbi-blast+ to `/work/gmgi/packages` using `wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz` and then `tar -zxvf ncbi-blast-2.16.0+-x64-linux.tar.gz`. NCBI latest: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/. Once downloaded, user does not need to repeat this. I was struggling with the remote flag here within a slurm script.
-
-**Option 2**: Download 12S sequences from NCBI via CRABS: Creating Reference databases for Amplicon-Based Sequencing.
-
-CRABS requires python 3.9 so I created a new conda environment with this version: `conda create --name Env_py3.9 python=3.9`. Fisheries eDNA uses python 3.12. I was struggling to download CRABS in either conda environment... come back to this.
-
-https://github.com/gjeunen/reference_database_creator
+NCBI is updated daily and therefore needs to be updated each time a project is analyzed. This is the not the most ideal method but we were struggling to get the `-remote` flag to work within slurm because I don't think NU slurm is connected to the internet? NU help desk was helping for awhile but we didn't get anywhere.
 
 ```
-conda activate Env_py3.9
-conda install -c bioconda crabs
+## start working on a node 
+srun --pty bash 
 
-cd /work/gmgi/databases/12S/ncbi
+## make sure fisheries_eDNA conda environment is activated 
+cd work/gmgi/databases/ncbi/nt
 
-crabs db_download --source ncbi --database nucleotide --query '12S[All Fields]' --output 12S_ncbi_[date].fasta --keep_original no --batchsize 5000
-
-makeblastdb -in 12S_ncbi_[date].fasta -dbtype nucl -out 12S_ncbi_[date] -parse_seqids
+## download nt db (this will take awhile)
+update_blastdb.pl --decompress nt
 ```
 
-**Option 3**: `blast` package is downloaded in the fisheries_eDNA conda environment with `conda install blast`. Install nt database `update_blastdb.pl --decompress nt` once inside the `work/gmgi/databases/ncbi/nt` folder. This is not ideal because it will take up more space and need to be updated.
+*Emma is still troubleshooting the -remote flag to also avoid storing the nt db within our /work/gmgi folder.* 
 
-
-#### Download Mitofish 
+#### Download and/or update Mitofish database  
 
 Check Mitofish webpage (https://mitofish.aori.u-tokyo.ac.jp/download/) for the most recent database version number. Compare to the `work/gmgi/databases/12S/reference_fasta/12S/Mitofish/` folder. If needed, update Mitofish database:
 
@@ -377,20 +371,22 @@ rm index*
 makeblastdb -in Mitofish_v4.02.fasta -dbtype nucl -out Mitofish_v4.02.fasta -parse_seqids
 ```
 
-Alternate option: Download Mitofish db with CRABS. This program and will download and format the db accordingly.   
-
-```
-git clone https://github.com/gjeunen/reference_database_creator.git
-
-## Download Mitofish 
-crabs db_download --source mitofish --output /work/gmgi/databases/12S/Mitofish/mitofish.fasta --keep_original yes
-### I couldn't get the function crabs to work 
-```
-
 #### Download GMGI 12S 
 
+This is our in-house GMGI database that will include version numbers. Check `/work/gmgi/databases/12S/GMGI/` for current uploaded version number and check our Box folder for the most recent version number. 
 
+On OOD portal, click the Interactive Apps dropdown. Select Home Directory under the HTML Viewer section. Navigate to the `/work/gmgi/databases/12S/GMGI/` folder. In the top right hand corner of the portal, select Upload and add the most recent .fasta file from our Box folder. 
 
+To create a blast db from this reference fasta file (if updated): 
+
+```
+cd /work/gmgi/databases/12S/GMGI/ 
+
+## make NCBI db 
+## make sure fisheries_eDNA conda environment is activated 
+### CHANGE THE VERSION NUMBER BELOW TO LATEST
+makeblastdb -in GMGI_Vert_Ref_2024v1.fasta -dbtype nucl -out GMGI_Vert_Ref_2024v1.fasta
+```
 
 ### Running taxonomic ID script 
 
@@ -411,13 +407,8 @@ crabs db_download --source mitofish --output /work/gmgi/databases/12S/Mitofish/m
 ### USER TO-DO ### 
 ## 1. Set paths for project; change db path if not 12S
 
-## LOAD MODULES 
-## can use module on NU cluster or own ncbi-blast+
-# module load ncbi-blast+/2.13.0
-ncbi_program="/work/gmgi/packages/ncbi-blast-2.16.0+"
-
 # Activate conda environment
-source ~/../../work/gmgi/miniconda3/bin/activate
+source /work/gmgi/miniconda3/bin/activate
 conda activate fisheries_eDNA
 
 # SET PATHS 
@@ -426,11 +417,12 @@ out=""
 
 gmgi="/work/gmgi/databases/12S/GMGI"
 mito="/work/gmgi/databases/12S/Mitofish"
+ncbi="/work/gmgi/databases/ncbi/nt"
 taxonkit="/work/gmgi/databases/taxonkit"
 
 #### DATABASE QUERY ####
 ### NCBI database 
-${ncbi_program}/bin/blastn -remote -db nt \
+blastn -db ${ncbi}/*.fasta \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_NCBI.txt \
    -max_target_seqs 10 -perc_identity 100 -qcov_hsp_perc 95 \
@@ -438,15 +430,14 @@ ${ncbi_program}/bin/blastn -remote -db nt \
    -verbose
 
 ## Mitofish database 
-
-${ncbi_program}/bin/blastn -db ${mito}/*.fasta \
+blastn -db ${mito}/*.fasta \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_Mito.txt \
    -max_target_seqs 10 -perc_identity 100 -qcov_hsp_perc 95 \
    -outfmt '6  qseqid   sseqid  pident   length   mismatch gapopen  qstart   qend  sstart   send  evalue   bitscore'
 
 ## GMGI database 
-${ncbi_program}/bin/blastn -db ${gmgi}/*.fasta \
+blastn -db ${gmgi}/*.fasta \
    -query ${ASV_fasta}/ASV_seqs.len.fasta \
    -out ${out}/BLASTResults_GMGI.txt \
    -max_target_seqs 10 -perc_identity 98 -qcov_hsp_perc 95 \
