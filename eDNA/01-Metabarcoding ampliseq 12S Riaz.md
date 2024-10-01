@@ -37,6 +37,7 @@ conda install conda-forge::singularity
 conda install bioconda::blast
 conda install nextflow
 conda install blast
+conda install singularity
 ```
 
 The conda environment is started within each slurm script, but to activate conda environment outside of the slurm script to update packages or check what is installed:
@@ -260,12 +261,8 @@ Update ampliseq workflow if needed: `nextflow pull nf-core/ampliseq`.
 ## 4. Adjust parameters as needed (below is Fisheries team default for 12S)
 
 # LOAD MODULES
-# module load singularity/3.10.3
-# module load nextflow/23.10.1
-
-# Activate conda environment
-source ~/../../work/gmgi/miniconda3/bin/activate
-conda activate fisheries_eDNA
+module load singularity/3.10.3
+module load nextflow/23.10.1
 
 # SET PATHS 
 metadata="" 
@@ -335,16 +332,32 @@ We use NCBI, Mitofish, and GMGI-12S databases.
 
 NCBI is updated daily and therefore needs to be updated each time a project is analyzed. This is the not the most ideal method but we were struggling to get the `-remote` flag to work within slurm because I don't think NU slurm is connected to the internet? NU help desk was helping for awhile but we didn't get anywhere.
 
+Within `/work/gmgi/databases/ncbi`, there is a `update_nt.sh` script with the following code. To run `sbatch update_nt.sh`. This won't take long as it will check for updates rather than re-downloading every time. 
+
 ```
-## start working on a node 
-srun --pty bash 
+#!/bin/bash
+#SBATCH --partition=short
+#SBATCH --nodes=1
+#SBATCH --time=24:00:00
+#SBATCH --job-name=update_ncbi_nt
+#SBATCH --mem=50G
+#SBATCH --output=%x_%j.out
+#SBATCH --error=%x_%j.err
 
-## make sure fisheries_eDNA conda environment is activated 
-cd work/gmgi/databases/ncbi/nt
+# Activate conda environment
+source /work/gmgi/miniconda3/bin/activate fisheries_eDNA
 
-## download nt db (this will take awhile)
+# Create output directory if it doesn't exist
+cd /work/gmgi/databases/ncbi/nt
+
+# Update BLAST nt database
 update_blastdb.pl --decompress nt
+
+# Print completion message
+echo "BLAST nt database update completed"
 ```
+
+View the `update_ncbi_nt.out` file to confirm the echo printed at the end.
 
 *Emma is still troubleshooting the -remote flag to also avoid storing the nt db within our /work/gmgi folder.* 
 
